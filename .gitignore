@@ -1,0 +1,24 @@
+# Runtime data
+/data/
+/.dashboard_work/
+
+# Uploaded/exported DeepSeek files
+/usage_data_*.zip
+/input/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Generated dashboard from the old static workflow
+/dashboard.html

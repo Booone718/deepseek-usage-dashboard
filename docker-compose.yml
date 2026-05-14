@@ -1,0 +1,19 @@
+services:
+  deepseek-usage:
+    build:
+      context: .
+      args:
+        PYTHON_IMAGE: python:3.12-slim
+        PIP_INDEX_URL: https://pypi.org/simple
+    container_name: deepseek-usage
+    ports:
+      - "18080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      DATA_DIR: /app/data
+      UPLOAD_RETENTION_DAYS: "365"
+      CLEANUP_ENABLED: "true"
+      # Set a password to enable HTTP Basic Auth.
+      # APP_PASSWORD: "change-me"
+    restart: unless-stopped

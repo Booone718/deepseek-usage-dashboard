@@ -1,0 +1,14 @@
+.git
+.venv
+__pycache__
+*.pyc
+
+data
+.dashboard_work
+input
+dashboard.html
+usage_data_*.zip
+
+.env
+.env.*
+!.env.example

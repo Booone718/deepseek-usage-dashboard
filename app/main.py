@@ -205,128 +205,281 @@ INDEX_HTML = r"""<!doctype html>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DeepSeek 用量看板</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2317201d'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial' font-size='18' font-weight='700' fill='%23f4c76b'%3EDS%3C/text%3E%3C/svg%3E" />
   <style>
     :root {
-      --bg: #eef2f7;
+      --bg: #f3f7f5;
+      --ink: #17201d;
+      --text: #22302c;
+      --muted: #697873;
+      --quiet: #8b9893;
       --panel: #ffffff;
-      --panel-soft: #f8fafc;
-      --text: #172033;
-      --muted: #64748b;
-      --line: #d5dde8;
-      --blue: #2f6fed;
-      --cyan: #0891b2;
-      --green: #0f8f62;
-      --red: #c2415b;
-      --amber: #b7791f;
-      --violet: #7c3aed;
-      --slate: #475569;
-      --shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+      --panel-soft: #f8faf7;
+      --line: #dfe6df;
+      --line-strong: #cbd7d0;
+      --brand: #0e6b5c;
+      --brand-dark: #0b3d36;
+      --blue: #315f9f;
+      --cyan: #16879a;
+      --green: #168a5a;
+      --red: #b04452;
+      --amber: #b36b22;
+      --aubergine: #6c5270;
+      --slate: #4e5d67;
+      --shadow: 0 16px 34px rgba(30, 43, 38, 0.08);
+      --shadow-soft: 0 8px 22px rgba(30, 43, 38, 0.06);
+      --radius: 8px;
     }
     * { box-sizing: border-box; }
+    html { background: var(--bg); }
     body {
       margin: 0;
-      background: var(--bg);
+      min-width: 320px;
+      background:
+        linear-gradient(180deg, #e6efeb 0, #f3f7f5 250px, #f3f7f5 100%),
+        var(--bg);
       color: var(--text);
-      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      font-family: "Aptos", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
       font-size: 14px;
       letter-spacing: 0;
     }
-    .shell { max-width: 1480px; margin: 0 auto; padding: 24px; }
-    header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
-    h1 { margin: 0; font-size: 30px; line-height: 1.15; letter-spacing: 0; }
-    h2 { margin: 0; font-size: 17px; }
-    .eyebrow { color: var(--blue); font-weight: 700; font-size: 12px; margin-bottom: 6px; }
+    .shell { max-width: 1520px; margin: 0 auto; padding: 28px 28px 40px; }
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 22px 24px;
+      background: var(--ink);
+      color: #f7fbf8;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .brand-block { display: flex; gap: 16px; align-items: center; min-width: 0; }
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      flex: 0 0 46px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 7px;
+      background: #f4c76b;
+      color: #17201d;
+      font-weight: 900;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+    h1 { margin: 0; color: #fff; font-size: 31px; line-height: 1.12; letter-spacing: 0; }
+    h2 { margin: 0; color: var(--ink); font-size: 16px; line-height: 1.35; }
+    .eyebrow { color: #9ad8c8; font-weight: 800; font-size: 12px; margin-bottom: 5px; }
     .muted { color: var(--muted); }
-    .header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 16px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.72); width: max-content; max-width: 100%; overflow: auto; }
-    .tabs button { min-width: 88px; border-color: transparent; background: transparent; }
-    .tabs button.active { background: var(--text); border-color: var(--text); color: #fff; }
+    header .muted { color: #b8c9c2; }
+    .header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; }
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 4px;
+      margin: 0 0 16px;
+      padding: 5px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.92);
+      width: max-content;
+      max-width: 100%;
+      overflow: auto;
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(10px);
+    }
+    .tabs button {
+      min-width: 92px;
+      height: 34px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .tabs button.active { background: var(--ink); border-color: var(--ink); color: #fff; }
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 16px;
+      border-radius: var(--radius);
+      padding: 17px;
       margin-bottom: 16px;
       min-width: 0;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-soft);
     }
+    .filters-panel { padding: 14px; }
     .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .kpi { border: 1px solid var(--line); border-top: 3px solid var(--blue); border-radius: 8px; padding: 14px; background: #fff; min-height: 96px; box-shadow: var(--shadow); }
-    .kpi:nth-child(2) { border-top-color: var(--green); }
-    .kpi:nth-child(3) { border-top-color: var(--amber); }
-    .kpi:nth-child(4) { border-top-color: var(--cyan); }
-    .kpi:nth-child(5) { border-top-color: var(--violet); }
-    .kpi:nth-child(6) { border-top-color: var(--red); }
-    .kpi:nth-child(7) { border-top-color: var(--slate); }
-    .kpi:nth-child(8) { border-top-color: var(--blue); }
-    .kpi .label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-    .kpi .value { font-size: 24px; font-weight: 700; overflow-wrap: anywhere; }
-    .kpi .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
-    .toolbar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; }
-    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-    input, select, button {
-      height: 36px;
+    .kpi {
+      position: relative;
+      min-height: 108px;
+      overflow: hidden;
       border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 15px 15px 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcfa 100%);
+      box-shadow: var(--shadow-soft);
+    }
+    .kpi::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--brand);
+    }
+    .kpi:nth-child(2)::before { background: var(--green); }
+    .kpi:nth-child(3)::before { background: var(--amber); }
+    .kpi:nth-child(4)::before { background: var(--cyan); }
+    .kpi:nth-child(5)::before { background: var(--aubergine); }
+    .kpi:nth-child(6)::before { background: var(--red); }
+    .kpi:nth-child(7)::before { background: var(--slate); }
+    .kpi:nth-child(8)::before { background: var(--blue); }
+    .kpi .label { color: var(--muted); font-size: 12px; font-weight: 800; margin-bottom: 10px; }
+    .kpi .value { color: var(--ink); font-size: 25px; font-weight: 850; line-height: 1.12; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+    .kpi .hint { color: var(--quiet); font-size: 12px; margin-top: 7px; }
+    .toolbar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; }
+    .filter-actions { justify-content: flex-end; margin-top: 12px; }
+    label { display: block; color: var(--muted); font-size: 12px; font-weight: 800; margin-bottom: 6px; }
+    input, select, button {
+      height: 38px;
+      border: 1px solid var(--line-strong);
       border-radius: 6px;
       background: #fff;
       color: var(--text);
-      padding: 0 10px;
+      padding: 0 11px;
       font: inherit;
       min-width: 0;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, transform 0.15s ease;
     }
-    input[type="file"] { padding: 6px 10px; height: auto; }
-    button { cursor: pointer; }
-    button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    input:hover, select:hover { border-color: #aebfb5; }
+    input:focus, select:focus, button:focus-visible {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(14, 107, 92, 0.16);
+    }
+    input[type="file"] { padding: 7px 10px; height: auto; min-height: 38px; }
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      min-height: 0;
+      accent-color: var(--brand);
+    }
+    button {
+      cursor: pointer;
+      font-weight: 800;
+      white-space: nowrap;
+      background: #f8faf7;
+    }
+    button:hover { background: #eef4ef; }
+    button:active { transform: translateY(1px); }
+    button.primary {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(14, 107, 92, 0.2);
+    }
+    button.primary:hover { background: #0b5f52; }
     button.ghost { background: #fff; }
-    button.danger { color: var(--red); }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border-bottom: 1px solid #e8edf4; padding: 10px 8px; text-align: left; vertical-align: middle; }
-    th { color: var(--muted); font-weight: 600; font-size: 12px; background: #fafbfe; }
+    button.danger { color: var(--red); background: #fff8f8; border-color: #efc7cc; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    th, td { border-bottom: 1px solid #e8eee8; padding: 11px 10px; text-align: left; vertical-align: middle; }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: var(--muted);
+      font-weight: 850;
+      font-size: 12px;
+      background: #f7faf6;
+    }
+    tbody tr { transition: background 0.15s ease; }
+    tbody tr:hover { background: #f3faf6; }
+    td { color: #2d3a35; }
     td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td input { width: 100%; min-width: 150px; }
+    td input[type="checkbox"] { width: 18px; min-width: 0; }
+    .table-wrap { overflow: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); }
+    .table-wrap table { min-width: 100%; }
+    #accountTable, #modelTable, #departmentTable { table-layout: fixed; }
+    #accountTable, #modelTable { min-width: 100%; }
+    #modelTable th:first-child, #modelTable td:first-child { width: 34%; }
+    #accountTable td:nth-child(7) { text-align: right; }
+    #departmentTable th:nth-child(n+2),
+    #accountTable th:nth-child(n+4),
+    #modelTable th:nth-child(n+2),
+    #keyTable th:nth-child(n+3),
+    #trendTable th:nth-child(n+2) { text-align: right; }
+    #keyTable { min-width: 760px; }
+    #trendTable { min-width: 780px; }
+    #accountsTable { min-width: 1080px; }
+    #importsTable { min-width: 980px; }
+    .table-wrap table th:first-child { border-top-left-radius: 7px; }
+    .table-wrap table th:last-child { border-top-right-radius: 7px; }
     .status { min-height: 24px; margin-top: 10px; color: var(--muted); }
     .status.ok { color: var(--green); }
     .status.error { color: var(--red); }
-    .notice { border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; }
-    .notice.ok { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
-    .notice.error { border-color: #fecdd3; background: #fff1f2; color: #be123c; }
+    .notice {
+      border: 1px solid #bad9cf;
+      background: #effaf6;
+      color: var(--brand-dark);
+      border-radius: var(--radius);
+      padding: 11px 12px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-soft);
+    }
+    .notice.ok { border-color: #bad9cf; background: #effaf6; color: var(--brand-dark); }
+    .notice.error { border-color: #f0c2c8; background: #fff5f6; color: #9e2c3b; }
     .hidden { display: none; }
     .section { display: none; }
     .section.active { display: block; }
     .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .row input { flex: 1 1 180px; }
+    .row input { flex: 1 1 220px; }
     .small { font-size: 12px; }
-    .bar-wrap { height: 10px; background: #eef2f7; border-radius: 999px; overflow: hidden; min-width: 80px; }
-    .bar { height: 10px; background: var(--blue); }
+    .bar-wrap { height: 9px; width: 100%; max-width: 104px; min-width: 0; margin-left: auto; background: #edf2ed; border-radius: 999px; overflow: hidden; }
+    .bar { height: 9px; background: linear-gradient(90deg, var(--brand), var(--cyan)); }
     .chart-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
-    .chart-panel { min-height: 360px; }
+    .chart-panel { min-height: 374px; }
     .span-8 { grid-column: span 8; }
     .span-6 { grid-column: span 6; }
     .span-4 { grid-column: span 4; }
-    .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin: -2px 0 13px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #edf1ed;
+    }
     .panel-subtitle { color: var(--muted); font-size: 12px; margin-top: 4px; }
     .chart { width: 100%; height: 260px; display: block; }
-    .echart { width: 100%; height: 278px; }
-    .echart.tall { height: 306px; }
+    .echart { width: 100%; height: 286px; }
+    .echart.tall { height: 316px; }
     .chart-action { cursor: pointer; transition: opacity 0.15s ease, filter 0.15s ease, transform 0.15s ease; }
-    .chart-action:hover { filter: saturate(1.2) brightness(0.95); opacity: 0.9; }
+    .chart-action:hover { filter: saturate(1.16) brightness(0.96); opacity: 0.92; }
     .rank-row.chart-action { border-radius: 8px; padding: 6px; margin: -6px; }
-    .rank-row.chart-action:hover { background: #f1f6ff; }
+    .rank-row.chart-action:hover { background: #f0f7f5; }
     .legend { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; color: var(--muted); font-size: 12px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
     .rank-list { display: grid; gap: 12px; }
     .rank-row { display: grid; gap: 6px; }
     .rank-meta { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-    .rank-label { font-weight: 600; overflow-wrap: anywhere; }
+    .rank-label { font-weight: 800; overflow-wrap: anywhere; }
     .rank-value { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .rank-track { height: 10px; border-radius: 999px; background: #edf2f7; overflow: hidden; }
-    .rank-fill { height: 10px; border-radius: 999px; background: var(--blue); }
+    .rank-track { height: 9px; border-radius: 999px; background: #edf2ed; overflow: hidden; }
+    .rank-fill { height: 9px; border-radius: 999px; background: var(--brand); }
     .donut-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 18px; align-items: center; min-height: 242px; }
     .donut { width: 170px; height: 170px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto; }
     .donut-hole { width: 104px; height: 104px; border-radius: 50%; background: #fff; display: grid; place-items: center; text-align: center; padding: 10px; border: 1px solid var(--line); }
-    .donut-value { font-weight: 800; font-size: 16px; }
+    .donut-value { font-weight: 850; font-size: 16px; }
     .donut-label { color: var(--muted); font-size: 12px; margin-top: 2px; }
     .metric-list { display: grid; gap: 10px; }
     .metric-item { display: grid; gap: 5px; }
@@ -335,40 +488,75 @@ INDEX_HTML = r"""<!doctype html>
     .heatmap th, .heatmap td { border: 0; padding: 8px; text-align: center; background: transparent; }
     .heatmap th { font-size: 11px; color: var(--muted); }
     .heat-cell { border-radius: 6px; color: #0f172a; font-variant-numeric: tabular-nums; min-width: 72px; }
-    .empty-state { display: grid; place-items: center; min-height: 220px; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; background: var(--panel-soft); text-align: center; padding: 16px; }
-    .upload-box { border: 1px dashed #9db6dc; background: #f8fbff; border-radius: 8px; padding: 18px; margin-top: 14px; }
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 220px;
+      color: var(--muted);
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--panel-soft);
+      text-align: center;
+      padding: 16px;
+    }
+    .upload-box {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px dashed #93baae;
+      background: #f5fbf8;
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-top: 14px;
+    }
     .chart-tooltip {
       position: fixed;
       z-index: 20;
       max-width: 280px;
       pointer-events: none;
-      background: rgba(15, 23, 42, 0.94);
+      background: rgba(23, 32, 29, 0.96);
       color: #fff;
       border-radius: 8px;
       padding: 9px 10px;
       font-size: 12px;
       line-height: 1.5;
-      box-shadow: 0 16px 34px rgba(15, 23, 42, 0.22);
+      box-shadow: 0 16px 34px rgba(23, 32, 29, 0.22);
       transform: translate(12px, 12px);
     }
     .chart-tooltip strong { display: block; font-size: 13px; margin-bottom: 2px; }
-    @media (max-width: 960px) {
-      .grid, .grid.two, .toolbar, .kpi-grid, .donut-layout { grid-template-columns: 1fr; }
+    @media (max-width: 1120px) {
+      .toolbar, .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .span-8, .span-6, .span-4 { grid-column: span 12; }
+    }
+    @media (max-width: 760px) {
+      .shell { padding: 14px; }
+      header { grid-template-columns: 1fr; padding: 18px; }
+      .brand-block { align-items: flex-start; }
+      .brand-mark { width: 40px; height: 40px; flex-basis: 40px; }
+      h1 { font-size: 25px; }
+      .header-actions { align-items: flex-start; }
+      .tabs { width: 100%; }
+      .tabs button { min-width: 86px; }
+      .grid, .grid.two, .toolbar, .kpi-grid, .donut-layout, .upload-box { grid-template-columns: 1fr; }
       .chart-grid { grid-template-columns: 1fr; }
       .span-8, .span-6, .span-4 { grid-column: auto; }
-      header { display: block; }
-      .header-actions { align-items: flex-start; margin-top: 12px; }
-      .shell { padding: 14px; }
+      .filter-actions { justify-content: flex-start; }
+      #accountTable { min-width: 680px; }
+      #modelTable { min-width: 620px; }
     }
   </style>
 </head>
 <body>
   <div class="shell">
     <header>
-      <div>
-        <div class="eyebrow">DeepSeek Usage Analytics</div>
-        <h1>DeepSeek 用量看板</h1>
-        <div class="muted">上传官方导出的 ZIP，按账号、模型、Key、部门和日期分析用量。</div>
+      <div class="brand-block">
+        <div class="brand-mark">DS</div>
+        <div>
+          <div class="eyebrow">DeepSeek Usage Analytics</div>
+          <h1>DeepSeek 用量看板</h1>
+          <div class="muted">上传官方导出的 ZIP，按账号、模型、Key、部门和日期分析用量。</div>
+        </div>
       </div>
       <div class="header-actions">
         <button class="primary" id="uploadShortcutBtn" type="button">上传数据</button>
@@ -385,7 +573,7 @@ INDEX_HTML = r"""<!doctype html>
 
     <section id="dashboard" class="section active">
       <div class="notice hidden" id="dashboardNotice"></div>
-      <div class="panel">
+      <div class="panel filters-panel">
         <div class="toolbar">
           <div><label>开始日期</label><input type="date" id="dateFrom" /></div>
           <div><label>结束日期</label><input type="date" id="dateTo" /></div>
@@ -395,7 +583,7 @@ INDEX_HTML = r"""<!doctype html>
           <div><label>部门</label><select id="departmentFilter"><option value="">全部部门</option></select></div>
           <div><label>负责人</label><select id="ownerFilter"><option value="">全部负责人</option></select></div>
         </div>
-        <div class="row" style="margin-top: 12px;">
+        <div class="row filter-actions">
           <button class="primary" id="refreshBtn">刷新</button>
           <button id="resetBtn">重置</button>
         </div>
@@ -483,27 +671,27 @@ INDEX_HTML = r"""<!doctype html>
               <div class="panel-subtitle">费用、账号数和 Token 汇总</div>
             </div>
           </div>
-          <div style="overflow:auto;"><table id="departmentTable"></table></div>
+          <div class="table-wrap"><table id="departmentTable"></table></div>
         </div>
       </div>
 
       <div class="grid two">
         <div class="panel">
           <h2>账号汇总</h2>
-          <div style="overflow:auto; margin-top: 12px;"><table id="accountTable"></table></div>
+          <div class="table-wrap"><table id="accountTable"></table></div>
         </div>
         <div class="panel">
           <h2>模型汇总</h2>
-          <div style="overflow:auto; margin-top: 12px;"><table id="modelTable"></table></div>
+          <div class="table-wrap"><table id="modelTable"></table></div>
         </div>
       </div>
       <div class="panel">
         <h2>API Key 汇总</h2>
-        <div style="overflow:auto; margin-top: 12px;"><table id="keyTable"></table></div>
+        <div class="table-wrap"><table id="keyTable"></table></div>
       </div>
       <div class="panel">
         <h2>日期趋势</h2>
-        <div style="overflow:auto; margin-top: 12px;"><table id="trendTable"></table></div>
+        <div class="table-wrap"><table id="trendTable"></table></div>
       </div>
     </section>
 
@@ -527,7 +715,7 @@ INDEX_HTML = r"""<!doctype html>
           <button type="button" id="exportAccountsBtn">导出 CSV</button>
         </form>
         <div class="status" id="accountStatus"></div>
-        <div style="overflow:auto; margin-top: 12px;"><table id="accountsTable"></table></div>
+        <div class="table-wrap"><table id="accountsTable"></table></div>
       </div>
     </section>
 
@@ -538,7 +726,7 @@ INDEX_HTML = r"""<!doctype html>
           <button id="cleanupBtn">清理过期原始 ZIP</button>
         </div>
         <div class="status" id="importStatus"></div>
-        <div style="overflow:auto; margin-top: 12px;"><table id="importsTable"></table></div>
+        <div class="table-wrap"><table id="importsTable"></table></div>
       </div>
     </section>
   </div>
@@ -557,7 +745,7 @@ INDEX_HTML = r"""<!doctype html>
     const compact = new Intl.NumberFormat("zh-CN", { notation: "compact", maximumFractionDigits: 1 });
     const money = new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY", maximumFractionDigits: 4 });
     const percentFmt = new Intl.NumberFormat("zh-CN", { style: "percent", maximumFractionDigits: 1 });
-    const palette = ["#2f6fed", "#0f8f62", "#b7791f", "#c2415b", "#7c3aed", "#0891b2", "#475569", "#db2777"];
+    const palette = ["#0e6b5c", "#315f9f", "#b36b22", "#16879a", "#b04452", "#6c5270", "#168a5a", "#4e5d67"];
     const typeLabels = {
       input_cache_hit_tokens: "缓存命中输入",
       input_cache_miss_tokens: "缓存未命中输入",
@@ -574,6 +762,7 @@ INDEX_HTML = r"""<!doctype html>
     const apiUrl = (path) => `${appBase}${path}`;
     const tipHtml = (title, lines = []) => `<strong>${escapeHtml(title)}</strong>${lines.map(line => `<div>${escapeHtml(line)}</div>`).join("")}`;
     const actionAttrs = (filters, tip) => `data-filter="${escapeHtml(JSON.stringify(filters || {}))}" data-tip="${escapeHtml(tip)}"`;
+    const isCompactViewport = () => window.innerWidth <= 760;
 
     function activateTab(tab, options = {}) {
       document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
@@ -817,16 +1006,16 @@ INDEX_HTML = r"""<!doctype html>
         animationDuration: 650,
         animationEasing: "cubicOut",
         textStyle: {
-          fontFamily: '"Segoe UI", "Microsoft YaHei", Arial, sans-serif',
-          color: "#172033"
+          fontFamily: '"Aptos", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif',
+          color: "#22302c"
         },
         tooltip: {
           trigger: "item",
           confine: true,
-          backgroundColor: "rgba(15, 23, 42, 0.94)",
+          backgroundColor: "rgba(23, 32, 29, 0.96)",
           borderWidth: 0,
           textStyle: { color: "#fff", fontSize: 12 },
-          extraCssText: "box-shadow:0 16px 34px rgba(15,23,42,.22);border-radius:8px;"
+          extraCssText: "box-shadow:0 16px 34px rgba(23,32,29,.22);border-radius:8px;"
         }
       };
     }
@@ -850,13 +1039,14 @@ INDEX_HTML = r"""<!doctype html>
       }
       const chart = chartElement("trendChart", true);
       if (!chart) return;
+      const compactMode = isCompactViewport();
       const dates = rows.map(row => row.utc_date);
       chart.setOption({
         ...chartBaseOption(),
         tooltip: {
           ...chartBaseOption().tooltip,
           trigger: "axis",
-          axisPointer: { type: "cross", label: { backgroundColor: "#334155" } },
+          axisPointer: { type: "cross", label: { backgroundColor: "#17201d" } },
           formatter: (items) => {
             const row = rows[items[0].dataIndex];
             return [
@@ -871,6 +1061,7 @@ INDEX_HTML = r"""<!doctype html>
         },
         legend: { top: 0, right: 0, itemWidth: 10, itemHeight: 10 },
         toolbox: {
+          show: !compactMode,
           right: 0,
           top: 28,
           feature: {
@@ -879,12 +1070,12 @@ INDEX_HTML = r"""<!doctype html>
             saveAsImage: { pixelRatio: 2 }
           }
         },
-        grid: { left: 54, right: 54, top: 58, bottom: rows.length > 12 ? 64 : 38, containLabel: true },
+        grid: { left: compactMode ? 28 : 54, right: compactMode ? 18 : 60, top: compactMode ? 54 : 58, bottom: rows.length > 12 ? 64 : compactMode ? 44 : 38, containLabel: true },
         dataZoom: rows.length > 12 ? [{ type: "slider", height: 18, bottom: 20 }, { type: "inside" }] : [],
-        xAxis: { type: "category", data: dates, boundaryGap: true, axisLabel: { color: "#64748b" } },
+        xAxis: { type: "category", data: dates, boundaryGap: true, axisLabel: { color: "#697873", hideOverlap: true } },
         yAxis: [
-          { type: "value", name: "Token / 请求", axisLabel: { formatter: value => compact.format(value), color: "#64748b" }, splitLine: { lineStyle: { color: "#e5ebf3" } } },
-          { type: "value", name: "费用", axisLabel: { formatter: value => money.format(value), color: "#64748b" }, splitLine: { show: false } }
+          { type: "value", name: compactMode ? "" : "Token / 请求", axisLabel: { formatter: value => compact.format(value), color: "#697873" }, splitLine: { lineStyle: { color: "#e5ece5" } } },
+          { type: "value", name: compactMode ? "" : "费用", axisLabel: { formatter: value => money.format(value), color: "#697873" }, splitLine: { show: false } }
         ],
         series: [
           {
@@ -893,7 +1084,7 @@ INDEX_HTML = r"""<!doctype html>
             yAxisIndex: 1,
             barMaxWidth: 22,
             data: rows.map(row => ({ value: toNumber(row.cost), filter: { date: row.utc_date } })),
-            itemStyle: { borderRadius: [4, 4, 0, 0], color: "#f4c76b" },
+            itemStyle: { borderRadius: [4, 4, 0, 0], color: "#d6a13d" },
             emphasis: { focus: "series" }
           },
           {
@@ -901,7 +1092,8 @@ INDEX_HTML = r"""<!doctype html>
             type: "line",
             smooth: true,
             symbolSize: 8,
-            areaStyle: { color: "rgba(47,111,237,.12)" },
+            lineStyle: { width: 3, color: "#0e6b5c" },
+            areaStyle: { color: "rgba(14,107,92,.12)" },
             data: rows.map(row => ({ value: toNumber(row.tokens), filter: { date: row.utc_date } })),
             emphasis: { focus: "series" }
           },
@@ -910,7 +1102,7 @@ INDEX_HTML = r"""<!doctype html>
             type: "line",
             smooth: true,
             symbolSize: 7,
-            lineStyle: { type: "dashed" },
+            lineStyle: { type: "dashed", color: "#315f9f" },
             data: rows.map(row => ({ value: toNumber(row.requests), filter: { date: row.utc_date } })),
             emphasis: { focus: "series" }
           }
@@ -927,6 +1119,7 @@ INDEX_HTML = r"""<!doctype html>
       }
       const chart = chartElement(id);
       if (!chart) return;
+      const compactMode = isCompactViewport();
       const sorted = rows.slice().sort((a, b) => toNumber(b[valueKey]) - toNumber(a[valueKey]));
       const top = sorted.slice(0, 8).map((row) => ({
         name: row[labelKey],
@@ -940,14 +1133,16 @@ INDEX_HTML = r"""<!doctype html>
       }
       chart.setOption({
         ...chartBaseOption(),
-        legend: { type: "scroll", orient: "vertical", right: 0, top: 18, bottom: 18, width: 120 },
+        legend: compactMode
+          ? { type: "scroll", orient: "horizontal", left: 0, right: 0, bottom: 0, itemWidth: 10, itemHeight: 10 }
+          : { type: "scroll", orient: "vertical", right: 0, top: 18, bottom: 18, width: 120 },
         series: [{
           type: "pie",
-          radius: ["45%", "72%"],
-          center: ["36%", "50%"],
+          radius: compactMode ? ["50%", "72%"] : ["45%", "72%"],
+          center: compactMode ? ["50%", "45%"] : ["36%", "50%"],
           avoidLabelOverlap: true,
           minAngle: 4,
-          label: { formatter: "{b}\n{d}%", color: "#334155" },
+          label: { show: !compactMode, formatter: "{b}\n{d}%", color: "#22302c" },
           labelLine: { length: 10, length2: 6 },
           data: top,
           emphasis: { scale: true, scaleSize: 8, itemStyle: { shadowBlur: 14, shadowColor: "rgba(15,23,42,.18)" } }
@@ -994,8 +1189,8 @@ INDEX_HTML = r"""<!doctype html>
       chart.setOption({
         ...chartBaseOption(),
         grid: { left: 12, right: 28, top: 18, bottom: 20, containLabel: true },
-        xAxis: { type: "value", axisLabel: { formatter: value => valueKey === "cost" ? money.format(value) : compact.format(value), color: "#64748b" }, splitLine: { lineStyle: { color: "#e5ebf3" } } },
-        yAxis: { type: "category", data: labels, axisLabel: { color: "#334155", width: 118, overflow: "truncate" } },
+        xAxis: { type: "value", axisLabel: { formatter: value => valueKey === "cost" ? money.format(value) : compact.format(value), color: "#697873" }, splitLine: { lineStyle: { color: "#e5ece5" } } },
+        yAxis: { type: "category", data: labels, axisLabel: { color: "#22302c", width: 118, overflow: "truncate" } },
         series: [{
           type: "bar",
           data,
@@ -1007,7 +1202,7 @@ INDEX_HTML = r"""<!doctype html>
           label: {
             show: true,
             position: "right",
-            color: "#475569",
+            color: "#4e5d67",
             formatter: params => valueFormatter(params.value)
           },
           emphasis: { focus: "self" }
@@ -1045,6 +1240,7 @@ INDEX_HTML = r"""<!doctype html>
       }
       const chart = chartElement("heatmapChart", true);
       if (!chart) return;
+      const compactMode = isCompactViewport();
       const accountTotals = new Map();
       const modelTotals = new Map();
       const values = new Map();
@@ -1073,22 +1269,26 @@ INDEX_HTML = r"""<!doctype html>
       const max = Math.max(...data.map(item => item.value[2]), 1);
       chart.setOption({
         ...chartBaseOption(),
-        grid: { left: 120, right: 24, top: 28, bottom: 48 },
-        xAxis: { type: "category", data: models, axisLabel: { color: "#334155", interval: 0, rotate: models.length > 3 ? 20 : 0 } },
-        yAxis: { type: "category", data: accounts, axisLabel: { color: "#334155", width: 104, overflow: "truncate" } },
+        grid: { left: compactMode ? 58 : 120, right: compactMode ? 10 : 24, top: 28, bottom: compactMode ? 86 : 74 },
+        xAxis: { type: "category", data: models, axisLabel: { color: "#22302c", interval: 0, rotate: models.length > 3 || compactMode ? 20 : 0, margin: 14, hideOverlap: true } },
+        yAxis: { type: "category", data: accounts, axisLabel: { color: "#22302c", width: compactMode ? 54 : 104, overflow: "truncate" } },
         visualMap: {
+          show: false,
           min: 0,
           max,
-          calculable: true,
+          calculable: false,
           orient: "horizontal",
           left: "center",
-          bottom: 0,
-          inRange: { color: ["#eff6ff", "#93c5fd", "#2563eb", "#1e3a8a"] }
+          bottom: compactMode ? 16 : 8,
+          itemWidth: compactMode ? 160 : 200,
+          itemHeight: 10,
+          textStyle: { color: "#697873" },
+          inRange: { color: ["#edf5f1", "#9fd5c6", "#2c927c", "#0b3d36"] }
         },
         series: [{
           type: "heatmap",
           data,
-          label: { show: true, color: "#0f172a", formatter: params => params.value[2] ? compact.format(params.value[2]) : "" },
+          label: { show: true, color: "#17201d", formatter: params => params.value[2] ? compact.format(params.value[2]) : "" },
           emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(15,23,42,.22)" } }
         }],
         tooltip: {

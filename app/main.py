@@ -399,6 +399,36 @@ INDEX_HTML = r"""<!doctype html>
       font-size: 12px;
       background: #f7faf6;
     }
+    .sort-button {
+      width: 100%;
+      height: auto;
+      min-height: 0;
+      display: inline-flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 6px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      box-shadow: none;
+      font: inherit;
+      font-weight: inherit;
+      text-align: inherit;
+    }
+    .sort-button:hover { background: transparent; }
+    .sort-button:focus-visible {
+      border-color: transparent;
+      box-shadow: 0 0 0 3px rgba(14, 107, 92, 0.14);
+    }
+    .sort-indicator {
+      min-width: 12px;
+      color: var(--brand);
+      text-align: center;
+    }
+    #keyTable th:nth-child(n+3) .sort-button,
+    #trendTable th:nth-child(n+2) .sort-button { justify-content: flex-end; }
     tbody tr { transition: background 0.15s ease; }
     tbody tr:hover { background: #f3faf6; }
     td { color: #2d3a35; }
@@ -408,7 +438,8 @@ INDEX_HTML = r"""<!doctype html>
     .table-wrap { overflow: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); }
     .table-wrap table { min-width: 100%; }
     #accountTable, #modelTable, #departmentTable { table-layout: fixed; }
-    #accountTable, #modelTable { min-width: 100%; }
+    #accountTable { min-width: 100%; }
+    #modelTable { min-width: 980px; }
     #modelTable th:first-child, #modelTable td:first-child { width: 34%; }
     #accountTable td:nth-child(7) { text-align: right; }
     #departmentTable th:nth-child(n+2),
@@ -416,8 +447,8 @@ INDEX_HTML = r"""<!doctype html>
     #modelTable th:nth-child(n+2),
     #keyTable th:nth-child(n+3),
     #trendTable th:nth-child(n+2) { text-align: right; }
-    #keyTable { min-width: 760px; }
-    #trendTable { min-width: 780px; }
+    #keyTable { min-width: 900px; }
+    #trendTable { min-width: 820px; }
     #accountsTable { min-width: 1080px; }
     #importsTable { min-width: 980px; }
     .table-wrap table th:first-child { border-top-left-radius: 7px; }
@@ -462,6 +493,7 @@ INDEX_HTML = r"""<!doctype html>
     .chart { width: 100%; height: 260px; display: block; }
     .echart { width: 100%; height: 286px; }
     .echart.tall { height: 316px; }
+    #accountRankChart.echart { height: 500px; }
     .chart-action { cursor: pointer; transition: opacity 0.15s ease, filter 0.15s ease, transform 0.15s ease; }
     .chart-action:hover { filter: saturate(1.16) brightness(0.96); opacity: 0.92; }
     .rank-row.chart-action { border-radius: 8px; padding: 6px; margin: -6px; }
@@ -597,7 +629,7 @@ INDEX_HTML = r"""<!doctype html>
         <div class="kpi"><div class="label">有用量 Key 数</div><div class="value" id="kpiKeys">0</div></div>
         <div class="kpi"><div class="label">模型数</div><div class="value" id="kpiModels">0</div></div>
         <div class="kpi"><div class="label">输出 Token</div><div class="value" id="kpiOutputTokens">0</div><div class="hint" id="kpiOutputShare">0%</div></div>
-        <div class="kpi"><div class="label">每千 Token 成本</div><div class="value" id="kpiAvgCost">0</div></div>
+        <div class="kpi"><div class="label">每百万 Token 成本</div><div class="value" id="kpiAvgCost">0</div></div>
       </div>
 
       <div class="chart-grid">
@@ -605,7 +637,7 @@ INDEX_HTML = r"""<!doctype html>
           <div class="panel-head">
             <div>
               <h2>费用与 Token 趋势</h2>
-              <div class="panel-subtitle">按日期观察费用、Token 和请求量变化</div>
+              <div class="panel-subtitle">按日期观察费用，并拆分不同模型的 Token 变化</div>
             </div>
           </div>
           <div id="trendChart"></div>
@@ -614,7 +646,7 @@ INDEX_HTML = r"""<!doctype html>
           <div class="panel-head">
             <div>
               <h2>模型占比</h2>
-              <div class="panel-subtitle">优先按费用展示，费用为空时按 Token 展示</div>
+              <div class="panel-subtitle">按模型展示输入命中缓存、输入未命中缓存和输出</div>
             </div>
           </div>
           <div id="modelShareChart"></div>
@@ -622,8 +654,8 @@ INDEX_HTML = r"""<!doctype html>
         <div class="panel chart-panel span-6">
           <div class="panel-head">
             <div>
-              <h2>账号用量排行</h2>
-              <div class="panel-subtitle">Top 8 账号 Token 分布</div>
+              <h2>API Key 用量排行</h2>
+              <div class="panel-subtitle">Top 20 API Key Token 分布，按模型堆叠</div>
             </div>
           </div>
           <div id="accountRankChart"></div>
@@ -632,11 +664,23 @@ INDEX_HTML = r"""<!doctype html>
           <div class="panel-head">
             <div>
               <h2>Token 类型结构</h2>
-              <div class="panel-subtitle">输入、缓存命中、输出和请求次数构成</div>
+              <div class="panel-subtitle">按模型拆分输入命中缓存、输入未命中缓存和输出</div>
             </div>
           </div>
           <div id="tokenMixChart"></div>
         </div>
+      </div>
+
+      <div class="panel">
+        <h2>API Key 汇总</h2>
+        <div class="table-wrap"><table id="keyTable"></table></div>
+      </div>
+      <div class="panel">
+        <h2>日期趋势</h2>
+        <div class="table-wrap"><table id="trendTable"></table></div>
+      </div>
+
+      <div class="chart-grid">
         <div class="panel chart-panel span-6">
           <div class="panel-head">
             <div>
@@ -684,14 +728,6 @@ INDEX_HTML = r"""<!doctype html>
           <h2>模型汇总</h2>
           <div class="table-wrap"><table id="modelTable"></table></div>
         </div>
-      </div>
-      <div class="panel">
-        <h2>API Key 汇总</h2>
-        <div class="table-wrap"><table id="keyTable"></table></div>
-      </div>
-      <div class="panel">
-        <h2>日期趋势</h2>
-        <div class="table-wrap"><table id="trendTable"></table></div>
       </div>
     </section>
 
@@ -752,6 +788,16 @@ INDEX_HTML = r"""<!doctype html>
       output_tokens: "输出 Token",
       request_count: "请求次数"
     };
+    const tokenTypeSeries = [
+      { key: "input_cache_hit_tokens", name: "输入命中缓存", color: "#168a5a" },
+      { key: "input_cache_miss_tokens", name: "输入未命中缓存", color: "#315f9f" },
+      { key: "output_tokens", name: "输出", color: "#b36b22" }
+    ];
+    const tableSortState = {
+      key: { key: "tokens", direction: "desc" },
+      trend: { key: "utc_date", direction: "asc" }
+    };
+    let dashboardData = null;
     const appBase = window.__APP_BASE__ ?? (() => {
       const path = window.location.pathname.replace(/\/$/, "");
       return path === "" || path === "/" ? "" : path;
@@ -827,6 +873,23 @@ INDEX_HTML = r"""<!doctype html>
       applyChartFilters(filters);
     });
 
+    document.addEventListener("click", (event) => {
+      const target = event.target.closest("[data-sort-table]");
+      if (!target) return;
+      const table = target.dataset.sortTable;
+      const key = target.dataset.sortKey;
+      const state = tableSortState[table];
+      if (!state || !key) return;
+      if (state.key === key) {
+        state.direction = state.direction === "asc" ? "desc" : "asc";
+      } else {
+        state.key = key;
+        state.direction = ["key_name", "utc_date", "account_name"].includes(key) ? "asc" : "desc";
+      }
+      if (table === "key") renderKeyTable(dashboardData?.by_key || []);
+      if (table === "trend") renderTrendTable(dashboardData?.trend || []);
+    });
+
     function applyChartFilters(filters) {
       const labels = [];
       if (filters.date) {
@@ -880,6 +943,7 @@ INDEX_HTML = r"""<!doctype html>
 
     async function loadDashboard() {
       const data = await api(`/api/dashboard?${queryString()}`);
+      dashboardData = data;
       const totalTokens = Number(data.kpi.total_tokens || 0);
       const totalCost = Number(data.kpi.total_cost || 0);
       $("kpiCost").textContent = money.format(data.kpi.total_cost || 0);
@@ -890,14 +954,14 @@ INDEX_HTML = r"""<!doctype html>
       $("kpiModels").textContent = fmt.format(data.kpi.model_count || 0);
       $("kpiOutputTokens").textContent = compact.format(data.kpi.output_tokens || 0);
       $("kpiOutputShare").textContent = totalTokens ? `${percentFmt.format((data.kpi.output_tokens || 0) / totalTokens)} / 全部 Token` : "0% / 全部 Token";
-      $("kpiAvgCost").textContent = totalTokens ? money.format(totalCost / totalTokens * 1000) : money.format(0);
+      $("kpiAvgCost").textContent = totalTokens ? money.format(totalCost / totalTokens * 1000000) : money.format(0);
       renderAccountOptions(data.accounts);
       renderModelOptions(data.models);
       renderDepartmentOptions(data.departments || []);
       renderOwnerOptions(data.owners || []);
-      renderTrendChart(data.trend);
+      renderTrendChart(data.trend, data.trend_by_model || []);
       renderModelShareChart(data.by_model);
-      renderRankChart("accountRankChart", data.by_account.slice(0, 8), "account_name", "tokens", (value) => `${compact.format(value)} Token`, (row) => money.format(row.cost || 0));
+      renderKeyModelRankChart(data.by_key_model || [], data.by_key || []);
       renderTokenMixChart(data.token_mix);
       const departmentMetric = sumRows(data.by_department, "cost") > 0 ? "cost" : "tokens";
       const ownerMetric = sumRows(data.by_owner, "cost") > 0 ? "cost" : "tokens";
@@ -921,8 +985,8 @@ INDEX_HTML = r"""<!doctype html>
       renderDepartmentTable(data.by_department);
       renderAccountTable(data.by_account);
       renderModelTable(data.by_model);
-      renderKeyTable(data.by_key);
-      renderTrendTable(data.trend);
+      renderKeyTable(data.by_key || []);
+      renderTrendTable(data.trend || []);
       $("lastRefresh").textContent = `刷新时间：${new Date().toLocaleString()}`;
     }
 
@@ -957,6 +1021,28 @@ INDEX_HTML = r"""<!doctype html>
 
     function sumRows(rows, key) {
       return (rows || []).reduce((total, row) => total + toNumber(row[key]), 0);
+    }
+
+    function sortRows(rows, table) {
+      const state = tableSortState[table];
+      if (!state) return rows || [];
+      const direction = state.direction === "asc" ? 1 : -1;
+      return (rows || []).slice().sort((a, b) => compareSortValue(a[state.key], b[state.key]) * direction);
+    }
+
+    function compareSortValue(left, right) {
+      const leftNumber = Number(left);
+      const rightNumber = Number(right);
+      if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+        return leftNumber - rightNumber;
+      }
+      return String(left ?? "").localeCompare(String(right ?? ""), "zh-CN", { numeric: true, sensitivity: "base" });
+    }
+
+    function sortableTh(table, key, label) {
+      const state = tableSortState[table] || {};
+      const indicator = state.key === key ? (state.direction === "asc" ? "↑" : "↓") : "";
+      return `<th><button type="button" class="sort-button" data-sort-table="${table}" data-sort-key="${key}"><span>${label}</span><span class="sort-indicator">${indicator}</span></button></th>`;
     }
 
     function emptyBlock(text) {
@@ -1031,7 +1117,7 @@ INDEX_HTML = r"""<!doctype html>
       charts.forEach(chart => chart.resize());
     });
 
-    function renderTrendChart(rows) {
+    function renderTrendChart(rows, modelRows) {
       rows = rows || [];
       if (!rows.length) {
         renderEmptyChart("trendChart", "暂无趋势数据");
@@ -1041,6 +1127,40 @@ INDEX_HTML = r"""<!doctype html>
       if (!chart) return;
       const compactMode = isCompactViewport();
       const dates = rows.map(row => row.utc_date);
+      const modelTotals = new Map();
+      (modelRows || []).forEach(row => {
+        modelTotals.set(row.model, (modelTotals.get(row.model) || 0) + toNumber(row.tokens));
+      });
+      const topModels = Array.from(modelTotals.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, compactMode ? 4 : 6)
+        .map(item => item[0]);
+      const modelByDate = new Map();
+      (modelRows || []).forEach(row => {
+        modelByDate.set(`${row.utc_date}|||${row.model}`, row);
+      });
+      const modelSeries = topModels.map((modelName, index) => ({
+        name: modelName,
+        type: "line",
+        smooth: true,
+        symbolSize: compactMode ? 5 : 7,
+        lineStyle: { width: 2.5, color: palette[index % palette.length] },
+        data: dates.map(date => {
+          const row = modelByDate.get(`${date}|||${modelName}`);
+          return { value: toNumber(row?.tokens), filter: { date, model: modelName }, source: row };
+        }),
+        emphasis: { focus: "series" }
+      }));
+      const tokenSeries = modelSeries.length ? modelSeries : [{
+        name: "Token",
+        type: "line",
+        smooth: true,
+        symbolSize: 8,
+        lineStyle: { width: 3, color: "#0e6b5c" },
+        areaStyle: { color: "rgba(14,107,92,.12)" },
+        data: rows.map(row => ({ value: toNumber(row.tokens), filter: { date: row.utc_date } })),
+        emphasis: { focus: "series" }
+      }];
       chart.setOption({
         ...chartBaseOption(),
         tooltip: {
@@ -1052,14 +1172,17 @@ INDEX_HTML = r"""<!doctype html>
             return [
               `<strong>${escapeHtml(row.utc_date)}</strong>`,
               `费用：${money.format(row.cost || 0)}`,
-              `Token：${fmt.format(row.tokens || 0)}`,
+              `总 Token：${fmt.format(row.tokens || 0)}`,
               `请求数：${fmt.format(row.requests || 0)}`,
               `输入 Token：${fmt.format(row.input_tokens || 0)}`,
-              `输出 Token：${fmt.format(row.output_tokens || 0)}`
+              `输出 Token：${fmt.format(row.output_tokens || 0)}`,
+              ...items
+                .filter(item => item.seriesName !== "费用")
+                .map(item => `${escapeHtml(item.seriesName)}：${fmt.format(item.value || 0)}`)
             ].join("<br>");
           }
         },
-        legend: { top: 0, right: 0, itemWidth: 10, itemHeight: 10 },
+        legend: { type: "scroll", top: 0, right: 0, left: compactMode ? 0 : 120, itemWidth: 10, itemHeight: 10 },
         toolbox: {
           show: !compactMode,
           right: 0,
@@ -1074,7 +1197,7 @@ INDEX_HTML = r"""<!doctype html>
         dataZoom: rows.length > 12 ? [{ type: "slider", height: 18, bottom: 20 }, { type: "inside" }] : [],
         xAxis: { type: "category", data: dates, boundaryGap: true, axisLabel: { color: "#697873", hideOverlap: true } },
         yAxis: [
-          { type: "value", name: compactMode ? "" : "Token / 请求", axisLabel: { formatter: value => compact.format(value), color: "#697873" }, splitLine: { lineStyle: { color: "#e5ece5" } } },
+          { type: "value", name: compactMode ? "" : "Token", axisLabel: { formatter: value => compact.format(value), color: "#697873" }, splitLine: { lineStyle: { color: "#e5ece5" } } },
           { type: "value", name: compactMode ? "" : "费用", axisLabel: { formatter: value => money.format(value), color: "#697873" }, splitLine: { show: false } }
         ],
         series: [
@@ -1086,27 +1209,8 @@ INDEX_HTML = r"""<!doctype html>
             data: rows.map(row => ({ value: toNumber(row.cost), filter: { date: row.utc_date } })),
             itemStyle: { borderRadius: [4, 4, 0, 0], color: "#d6a13d" },
             emphasis: { focus: "series" }
-          },
-          {
-            name: "Token",
-            type: "line",
-            smooth: true,
-            symbolSize: 8,
-            lineStyle: { width: 3, color: "#0e6b5c" },
-            areaStyle: { color: "rgba(14,107,92,.12)" },
-            data: rows.map(row => ({ value: toNumber(row.tokens), filter: { date: row.utc_date } })),
-            emphasis: { focus: "series" }
-          },
-          {
-            name: "请求数",
-            type: "line",
-            smooth: true,
-            symbolSize: 7,
-            lineStyle: { type: "dashed", color: "#315f9f" },
-            data: rows.map(row => ({ value: toNumber(row.requests), filter: { date: row.utc_date } })),
-            emphasis: { focus: "series" }
           }
-        ]
+        ].concat(tokenSeries)
       }, true);
       applyEchartClick(chart);
     }
@@ -1156,17 +1260,53 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function renderModelShareChart(rows) {
-      const costTotal = sumRows(rows, "cost");
-      const valueKey = costTotal > 0 ? "cost" : "tokens";
-      const formatter = valueKey === "cost" ? (value) => money.format(value) : (value) => `${compact.format(value)} Token`;
-      renderPieChart(
-        "modelShareChart",
-        rows,
-        valueKey,
-        "model",
-        formatter,
-        row => ({ model: row.model })
-      );
+      rows = (rows || []).filter(row => toNumber(row.tokens) > 0);
+      if (!rows.length) {
+        renderEmptyChart("modelShareChart", "暂无模型数据");
+        return;
+      }
+      const chart = chartElement("modelShareChart");
+      if (!chart) return;
+      const compactMode = isCompactViewport();
+      const sorted = rows.slice().sort((a, b) => toNumber(a.tokens) - toNumber(b.tokens)).slice(-8);
+      const models = sorted.map(row => row.model);
+      chart.setOption({
+        ...chartBaseOption(),
+        legend: { type: "scroll", top: 0, left: 0, right: 0, itemWidth: 10, itemHeight: 10 },
+        grid: { left: compactMode ? 84 : 104, right: 18, top: 42, bottom: 18, containLabel: true },
+        xAxis: { type: "value", axisLabel: { formatter: value => compact.format(value), color: "#697873" }, splitLine: { lineStyle: { color: "#e5ece5" } } },
+        yAxis: { type: "category", data: models, axisLabel: { color: "#22302c", width: compactMode ? 72 : 98, overflow: "truncate" } },
+        series: tokenTypeSeries.map(item => ({
+          name: item.name,
+          type: "bar",
+          stack: "tokens",
+          barMaxWidth: 20,
+          data: sorted.map(row => ({
+            value: toNumber(row[item.key]),
+            source: row,
+            filter: { model: row.model }
+          })),
+          itemStyle: { color: item.color },
+          emphasis: { focus: "series" }
+        })),
+        tooltip: {
+          ...chartBaseOption().tooltip,
+          trigger: "axis",
+          axisPointer: { type: "shadow" },
+          formatter: params => {
+            const row = params[0]?.data?.source || {};
+            return [
+              `<strong>${escapeHtml(row.model || "")}</strong>`,
+              `总 Token：${fmt.format(row.tokens || 0)}`,
+              `输入命中缓存：${fmt.format(row.cache_hit_tokens || 0)}`,
+              `输入未命中缓存：${fmt.format(row.cache_miss_tokens || 0)}`,
+              `输出：${fmt.format(row.output_tokens || 0)}`,
+              `每百万 Token 成本：${money.format(row.cost_per_million_tokens || 0)}`
+            ].join("<br>");
+          }
+        }
+      }, true);
+      applyEchartClick(chart, params => params.data?.filter);
     }
 
     function renderRankChart(id, rows, labelKey, valueKey, valueFormatter, subFormatter) {
@@ -1182,6 +1322,7 @@ INDEX_HTML = r"""<!doctype html>
       const data = sorted.map(row => {
         let filter = null;
         if (row.user_id) filter = { user_id: row.user_id, account_name: row.account_name };
+        if (labelKey === "key_name") filter = { key: row.key_name };
         if (labelKey === "department") filter = { department: row.department };
         if (labelKey === "owner") filter = { owner: row.owner };
         return { value: toNumber(row[valueKey]), source: row, filter };
@@ -1218,18 +1359,153 @@ INDEX_HTML = r"""<!doctype html>
       applyEchartClick(chart);
     }
 
+    function renderKeyModelRankChart(modelRows, keyRows) {
+      modelRows = (modelRows || []).filter(row => toNumber(row.tokens) > 0);
+      if (!modelRows.length) {
+        renderEmptyChart("accountRankChart", "暂无 API Key 模型排行数据");
+        return;
+      }
+      const keyTotals = new Map();
+      modelRows.forEach(row => {
+        if (!keyTotals.has(row.key_name)) {
+          keyTotals.set(row.key_name, {
+            key_name: row.key_name,
+            tokens: 0,
+            cost: 0,
+            account_count: 0
+          });
+        }
+        const total = keyTotals.get(row.key_name);
+        total.tokens += toNumber(row.tokens);
+        total.cost += toNumber(row.cost);
+        total.account_count = Math.max(total.account_count, toNumber(row.account_count));
+      });
+      (keyRows || []).forEach(row => {
+        keyTotals.set(row.key_name, {
+          key_name: row.key_name,
+          tokens: toNumber(row.tokens),
+          cost: toNumber(row.cost),
+          account_count: toNumber(row.account_count)
+        });
+      });
+      const keys = Array.from(keyTotals.values())
+        .sort((a, b) => b.tokens - a.tokens)
+        .slice(0, 20)
+        .reverse()
+        .map(row => row.key_name);
+      const keySet = new Set(keys);
+      const models = Array.from(new Set(modelRows.filter(row => keySet.has(row.key_name)).map(row => row.model)))
+        .sort((a, b) => {
+          const totalA = sumRows(modelRows.filter(row => row.model === a && keySet.has(row.key_name)), "tokens");
+          const totalB = sumRows(modelRows.filter(row => row.model === b && keySet.has(row.key_name)), "tokens");
+          return totalB - totalA;
+        });
+      const values = new Map();
+      modelRows.forEach(row => {
+        values.set(`${row.key_name}|||${row.model}`, row);
+      });
+      const chart = chartElement("accountRankChart");
+      if (!chart) return;
+      chart.setOption({
+        ...chartBaseOption(),
+        legend: { type: "scroll", top: 0, left: 0, right: 0, itemWidth: 10, itemHeight: 10 },
+        grid: { left: 106, right: 36, top: 42, bottom: 22, containLabel: true },
+        xAxis: { type: "value", axisLabel: { formatter: value => compact.format(value), color: "#697873" }, splitLine: { lineStyle: { color: "#e5ece5" } } },
+        yAxis: { type: "category", data: keys, axisLabel: { color: "#22302c", width: 98, overflow: "truncate" } },
+        series: models.map((modelName, index) => ({
+          name: modelName,
+          type: "bar",
+          stack: "tokens",
+          barMaxWidth: 18,
+          data: keys.map(keyName => {
+            const row = values.get(`${keyName}|||${modelName}`);
+            return {
+              value: toNumber(row?.tokens),
+              source: row,
+              filter: { key: keyName, model: modelName }
+            };
+          }),
+          itemStyle: {
+            color: palette[index % palette.length],
+            borderRadius: index === models.length - 1 ? [0, 7, 7, 0] : 0
+          },
+          emphasis: { focus: "series" }
+        })),
+        tooltip: {
+          ...chartBaseOption().tooltip,
+          trigger: "axis",
+          axisPointer: { type: "shadow" },
+          formatter: items => {
+            const keyName = items[0]?.axisValue || "";
+            const total = keyTotals.get(keyName) || {};
+            const modelLines = items
+              .filter(item => toNumber(item.value) > 0)
+              .map(item => `${escapeHtml(item.seriesName)}：${fmt.format(item.value || 0)}`);
+            return [
+              `<strong>${escapeHtml(keyName)}</strong>`,
+              `总 Token：${fmt.format(total.tokens || 0)}`,
+              `费用：${money.format(total.cost || 0)}`,
+              `账号数：${fmt.format(total.account_count || 0)}`,
+              ...modelLines
+            ].join("<br>");
+          }
+        }
+      }, true);
+      applyEchartClick(chart);
+    }
+
     function renderTokenMixChart(rows) {
-      const tokenRows = (rows || [])
-        .filter(row => row.type !== "request_count")
-        .map(row => ({ label: typeLabels[row.type] || row.type, amount: row.amount }));
-      renderPieChart(
-        "tokenMixChart",
-        tokenRows,
-        "amount",
-        "label",
-        (value) => `${compact.format(value)} Token`,
-        null
-      );
+      rows = (rows || []).filter(row => row.type !== "request_count" && toNumber(row.amount) > 0);
+      if (!rows.length) {
+        renderEmptyChart("tokenMixChart", "暂无 Token 类型数据");
+        return;
+      }
+      const chart = chartElement("tokenMixChart");
+      if (!chart) return;
+      const compactMode = isCompactViewport();
+      const modelTotals = new Map();
+      const values = new Map();
+      rows.forEach(row => {
+        modelTotals.set(row.model, (modelTotals.get(row.model) || 0) + toNumber(row.amount));
+        values.set(`${row.model}|||${row.type}`, toNumber(row.amount));
+      });
+      const models = Array.from(modelTotals.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, compactMode ? 6 : 8)
+        .map(item => item[0]);
+      chart.setOption({
+        ...chartBaseOption(),
+        legend: { type: "scroll", top: 0, left: 0, right: 0, itemWidth: 10, itemHeight: 10 },
+        grid: { left: 52, right: 18, top: 42, bottom: models.length > 4 ? 72 : 38, containLabel: true },
+        xAxis: { type: "category", data: models, axisLabel: { color: "#22302c", interval: 0, rotate: models.length > 3 || compactMode ? 20 : 0, hideOverlap: true } },
+        yAxis: { type: "value", axisLabel: { formatter: value => compact.format(value), color: "#697873" }, splitLine: { lineStyle: { color: "#e5ece5" } } },
+        series: tokenTypeSeries.map(item => ({
+          name: item.name,
+          type: "bar",
+          stack: "tokens",
+          barMaxWidth: 34,
+          data: models.map(modelName => ({
+            value: values.get(`${modelName}|||${item.key}`) || 0,
+            filter: { model: modelName }
+          })),
+          itemStyle: { color: item.color },
+          emphasis: { focus: "series" }
+        })),
+        tooltip: {
+          ...chartBaseOption().tooltip,
+          trigger: "axis",
+          axisPointer: { type: "shadow" },
+          formatter: items => {
+            const total = items.reduce((sum, item) => sum + toNumber(item.value), 0);
+            return [
+              `<strong>${escapeHtml(items[0]?.axisValue || "")}</strong>`,
+              `总 Token：${fmt.format(total)}`,
+              ...items.map(item => `${escapeHtml(item.seriesName)}：${fmt.format(item.value || 0)}`)
+            ].join("<br>");
+          }
+        }
+      }, true);
+      applyEchartClick(chart);
     }
 
     function renderHeatmapChart(rows) {
@@ -1318,20 +1594,26 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function renderModelTable(rows) {
-      $("modelTable").innerHTML = `<thead><tr><th>模型</th><th>费用</th><th>请求数</th><th>Token</th><th>每千 Token</th></tr></thead><tbody>` +
-        rows.map(r => `<tr><td>${escapeHtml(r.model)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td><td class="num">${r.tokens ? money.format((r.cost || 0) / r.tokens * 1000) : money.format(0)}</td></tr>`).join("") +
+      $("modelTable").innerHTML = `<thead><tr><th>模型</th><th>费用</th><th>请求数</th><th>Token</th><th>命中缓存输入</th><th>未命中缓存输入</th><th>输出</th><th>每百万 Token</th></tr></thead><tbody>` +
+        rows.map(r => `<tr><td>${escapeHtml(r.model)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td><td class="num">${fmt.format(r.cache_hit_tokens || 0)}</td><td class="num">${fmt.format(r.cache_miss_tokens || 0)}</td><td class="num">${fmt.format(r.output_tokens || 0)}</td><td class="num">${money.format(r.cost_per_million_tokens || 0)}</td></tr>`).join("") +
         `</tbody>`;
     }
 
     function renderKeyTable(rows) {
-      $("keyTable").innerHTML = `<thead><tr><th>API Key</th><th>账号</th><th>费用</th><th>请求数</th><th>Token</th></tr></thead><tbody>` +
-        rows.map(r => `<tr><td>${escapeHtml(r.key_name)}</td><td>${escapeHtml(r.account_name)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td></tr>`).join("") +
+      const prepared = (rows || []).map(r => ({
+        ...r,
+        cost_per_million: r.tokens ? (r.cost || 0) / r.tokens * 1000000 : 0
+      }));
+      const sorted = sortRows(prepared, "key");
+      $("keyTable").innerHTML = `<thead><tr>${sortableTh("key", "key_name", "API Key")}${sortableTh("key", "account_name", "关联账号")}${sortableTh("key", "account_count", "账号数")}${sortableTh("key", "cost", "费用")}${sortableTh("key", "requests", "请求数")}${sortableTh("key", "cache_hit_tokens", "命中缓存输入")}${sortableTh("key", "cache_miss_tokens", "未命中缓存输入")}${sortableTh("key", "output_tokens", "输出 Token")}${sortableTh("key", "tokens", "总 Token")}${sortableTh("key", "cost_per_million", "每百万 Token")}</tr></thead><tbody>` +
+        sorted.map(r => `<tr><td>${escapeHtml(r.key_name)}</td><td>${escapeHtml(r.account_name)}</td><td class="num">${fmt.format(r.account_count || 0)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.cache_hit_tokens || 0)}</td><td class="num">${fmt.format(r.cache_miss_tokens || 0)}</td><td class="num">${fmt.format(r.output_tokens || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td><td class="num">${money.format(r.cost_per_million)}</td></tr>`).join("") +
         `</tbody>`;
     }
 
     function renderTrendTable(rows) {
-      $("trendTable").innerHTML = `<thead><tr><th>日期</th><th>费用</th><th>请求数</th><th>输入 Token</th><th>输出 Token</th><th>总 Token</th></tr></thead><tbody>` +
-        rows.map(r => `<tr><td>${escapeHtml(r.utc_date)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.input_tokens || 0)}</td><td class="num">${fmt.format(r.output_tokens || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td></tr>`).join("") +
+      const sorted = sortRows(rows, "trend");
+      $("trendTable").innerHTML = `<thead><tr>${sortableTh("trend", "utc_date", "日期")}${sortableTh("trend", "cost", "费用")}${sortableTh("trend", "requests", "请求数")}${sortableTh("trend", "cache_hit_tokens", "命中缓存输入")}${sortableTh("trend", "cache_miss_tokens", "未命中缓存输入")}${sortableTh("trend", "output_tokens", "输出 Token")}${sortableTh("trend", "tokens", "总 Token")}</tr></thead><tbody>` +
+        sorted.map(r => `<tr><td>${escapeHtml(r.utc_date)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.cache_hit_tokens || 0)}</td><td class="num">${fmt.format(r.cache_miss_tokens || 0)}</td><td class="num">${fmt.format(r.output_tokens || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td></tr>`).join("") +
         `</tbody>`;
     }
 

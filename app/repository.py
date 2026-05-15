@@ -3,9 +3,10 @@ from __future__ import annotations
 import csv
 import os
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import pandas as pd
 
@@ -19,11 +20,19 @@ class Repository:
         self.db_path = db_path
         self.data_dir = data_dir
 
-    def connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def connect(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
-        return conn
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     def init_db(self) -> None:
         with self.connect() as conn:
@@ -246,9 +255,12 @@ class Repository:
             "a", date_from, date_to, user_id, model, api_key_query, department, owner
         )
 
+        active_amount_cte = _active_amount_cte()
+
         with self.connect() as conn:
             kpi = conn.execute(
                 f"""
+                {active_amount_cte}
                 SELECT
                     COALESCE(SUM(CASE WHEN type <> 'request_count' THEN amount ELSE 0 END), 0) AS total_tokens,
                     COALESCE(SUM(CASE WHEN type = 'request_count' THEN amount ELSE 0 END), 0) AS total_requests,
@@ -261,7 +273,7 @@ class Repository:
                     COUNT(DISTINCT user_id) AS account_count,
                     COUNT(DISTINCT model) AS model_count,
                     COUNT(DISTINCT utc_date) AS day_count
-                  FROM usage_amount a
+                  FROM active_amount a
                  WHERE {amount_where}
                 """,
                 amount_params,
@@ -269,6 +281,7 @@ class Repository:
             by_account = _rows(
                 conn.execute(
                     f"""
+                    {active_amount_cte}
                     SELECT
                         COALESCE(m.account_name, a.user_id, '未知账号') AS account_name,
                         a.user_id,
@@ -276,8 +289,11 @@ class Repository:
                         COALESCE(NULLIF(TRIM(m.department), ''), '未维护部门') AS department,
                         COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) AS tokens,
-                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost
-                      FROM usage_amount a
+                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_hit_tokens' THEN a.amount ELSE 0 END), 0) AS cache_hit_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_miss_tokens' THEN a.amount ELSE 0 END), 0) AS cache_miss_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'output_tokens' THEN a.amount ELSE 0 END), 0) AS output_tokens
+                      FROM active_amount a
                       LEFT JOIN account_mapping m ON m.user_id = a.user_id
                      WHERE {amount_where}
                      GROUP BY a.user_id, account_name, owner, department
@@ -290,19 +306,48 @@ class Repository:
             by_key = _rows(
                 conn.execute(
                     f"""
+                    {active_amount_cte}
                     SELECT
                         COALESCE(NULLIF(a.api_key_name, ''), NULLIF(a.api_key, ''), '未命名 Key') AS key_name,
-                        COALESCE(m.account_name, a.user_id, '未知账号') AS account_name,
-                        a.user_id,
+                        GROUP_CONCAT(DISTINCT COALESCE(m.account_name, a.user_id, '未知账号')) AS account_name,
+                        COUNT(DISTINCT a.user_id) AS account_count,
                         COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) AS tokens,
-                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost
-                      FROM usage_amount a
+                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_hit_tokens' THEN a.amount ELSE 0 END), 0) AS cache_hit_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_miss_tokens' THEN a.amount ELSE 0 END), 0) AS cache_miss_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'output_tokens' THEN a.amount ELSE 0 END), 0) AS output_tokens
+                      FROM active_amount a
                       LEFT JOIN account_mapping m ON m.user_id = a.user_id
                      WHERE {amount_where}
-                     GROUP BY a.user_id, key_name, account_name
+                     GROUP BY key_name
                      ORDER BY tokens DESC, requests DESC
                      LIMIT 100
+                    """,
+                    amount_params,
+                )
+            )
+            by_key_model = _rows(
+                conn.execute(
+                    f"""
+                    {active_amount_cte}
+                    SELECT
+                        COALESCE(NULLIF(a.api_key_name, ''), NULLIF(a.api_key, ''), '未命名 Key') AS key_name,
+                        a.model,
+                        GROUP_CONCAT(DISTINCT COALESCE(m.account_name, a.user_id, '未知账号')) AS account_name,
+                        COUNT(DISTINCT a.user_id) AS account_count,
+                        COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
+                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) AS tokens,
+                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_hit_tokens' THEN a.amount ELSE 0 END), 0) AS cache_hit_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_miss_tokens' THEN a.amount ELSE 0 END), 0) AS cache_miss_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'output_tokens' THEN a.amount ELSE 0 END), 0) AS output_tokens
+                      FROM active_amount a
+                      LEFT JOIN account_mapping m ON m.user_id = a.user_id
+                     WHERE {amount_where}
+                     GROUP BY key_name, a.model
+                     ORDER BY tokens DESC, requests DESC
+                     LIMIT 300
                     """,
                     amount_params,
                 )
@@ -310,12 +355,23 @@ class Repository:
             by_model = _rows(
                 conn.execute(
                     f"""
+                    {active_amount_cte}
                     SELECT
                         a.model,
                         COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) AS tokens,
-                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost
-                      FROM usage_amount a
+                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost,
+                        COALESCE(SUM(CASE WHEN a.type IN ('input_cache_hit_tokens', 'input_cache_miss_tokens') THEN a.amount ELSE 0 END), 0) AS input_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_hit_tokens' THEN a.amount ELSE 0 END), 0) AS cache_hit_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_miss_tokens' THEN a.amount ELSE 0 END), 0) AS cache_miss_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'output_tokens' THEN a.amount ELSE 0 END), 0) AS output_tokens,
+                        CASE
+                            WHEN COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) > 0
+                            THEN COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0)
+                                 / SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END) * 1000000
+                            ELSE 0
+                        END AS cost_per_million_tokens
+                      FROM active_amount a
                      WHERE {amount_where}
                      GROUP BY a.model
                      ORDER BY tokens DESC, requests DESC
@@ -326,13 +382,14 @@ class Repository:
             by_department = _rows(
                 conn.execute(
                     f"""
+                    {active_amount_cte}
                     SELECT
                         COALESCE(NULLIF(TRIM(m.department), ''), '未维护部门') AS department,
                         COUNT(DISTINCT a.user_id) AS account_count,
                         COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) AS tokens,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost
-                      FROM usage_amount a
+                      FROM active_amount a
                       LEFT JOIN account_mapping m ON m.user_id = a.user_id
                      WHERE {amount_where}
                      GROUP BY department
@@ -345,13 +402,14 @@ class Repository:
             by_owner = _rows(
                 conn.execute(
                     f"""
+                    {active_amount_cte}
                     SELECT
                         COALESCE(NULLIF(TRIM(m.owner), ''), '未维护负责人') AS owner,
                         COUNT(DISTINCT a.user_id) AS account_count,
                         COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) AS tokens,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost
-                      FROM usage_amount a
+                      FROM active_amount a
                       LEFT JOIN account_mapping m ON m.user_id = a.user_id
                      WHERE {amount_where}
                      GROUP BY owner
@@ -364,13 +422,15 @@ class Repository:
             token_mix = _rows(
                 conn.execute(
                     f"""
+                    {active_amount_cte}
                     SELECT
+                        a.model,
                         a.type,
                         COALESCE(SUM(a.amount), 0) AS amount
-                      FROM usage_amount a
+                      FROM active_amount a
                      WHERE {amount_where}
-                     GROUP BY a.type
-                     ORDER BY amount DESC
+                     GROUP BY a.model, a.type
+                     ORDER BY a.model, amount DESC
                     """,
                     amount_params,
                 )
@@ -378,6 +438,7 @@ class Repository:
             model_account = _rows(
                 conn.execute(
                     f"""
+                    {active_amount_cte}
                     SELECT
                         COALESCE(m.account_name, a.user_id, '未知账号') AS account_name,
                         a.user_id,
@@ -385,7 +446,7 @@ class Repository:
                         COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) AS tokens,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost
-                      FROM usage_amount a
+                      FROM active_amount a
                       LEFT JOIN account_mapping m ON m.user_id = a.user_id
                      WHERE {amount_where}
                      GROUP BY a.user_id, account_name, a.model
@@ -398,17 +459,42 @@ class Repository:
             trend = _rows(
                 conn.execute(
                     f"""
+                    {active_amount_cte}
                     SELECT
                         a.utc_date,
                         COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) AS tokens,
                         COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost,
                         COALESCE(SUM(CASE WHEN a.type IN ('input_cache_hit_tokens', 'input_cache_miss_tokens') THEN a.amount ELSE 0 END), 0) AS input_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_hit_tokens' THEN a.amount ELSE 0 END), 0) AS cache_hit_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_miss_tokens' THEN a.amount ELSE 0 END), 0) AS cache_miss_tokens,
                         COALESCE(SUM(CASE WHEN a.type = 'output_tokens' THEN a.amount ELSE 0 END), 0) AS output_tokens
-                      FROM usage_amount a
+                      FROM active_amount a
                      WHERE {amount_where}
                      GROUP BY a.utc_date
                      ORDER BY a.utc_date
+                    """,
+                    amount_params,
+                )
+            )
+            trend_by_model = _rows(
+                conn.execute(
+                    f"""
+                    {active_amount_cte}
+                    SELECT
+                        a.utc_date,
+                        a.model,
+                        COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
+                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN a.amount ELSE 0 END), 0) AS tokens,
+                        COALESCE(SUM(CASE WHEN a.type <> 'request_count' THEN COALESCE(a.price, 0) * a.amount ELSE 0 END), 0) AS cost,
+                        COALESCE(SUM(CASE WHEN a.type IN ('input_cache_hit_tokens', 'input_cache_miss_tokens') THEN a.amount ELSE 0 END), 0) AS input_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_hit_tokens' THEN a.amount ELSE 0 END), 0) AS cache_hit_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'input_cache_miss_tokens' THEN a.amount ELSE 0 END), 0) AS cache_miss_tokens,
+                        COALESCE(SUM(CASE WHEN a.type = 'output_tokens' THEN a.amount ELSE 0 END), 0) AS output_tokens
+                      FROM active_amount a
+                     WHERE {amount_where}
+                     GROUP BY a.utc_date, a.model
+                     ORDER BY a.utc_date, tokens DESC
                     """,
                     amount_params,
                 )
@@ -422,7 +508,17 @@ class Repository:
                     """
                 )
             )
-            models = [row["model"] for row in conn.execute("SELECT DISTINCT model FROM usage_amount ORDER BY model")]
+            models = [
+                row["model"]
+                for row in conn.execute(
+                    f"""
+                    {active_amount_cte}
+                    SELECT DISTINCT model
+                      FROM active_amount
+                     ORDER BY model
+                    """
+                )
+            ]
             departments = [
                 row["department"]
                 for row in conn.execute(
@@ -462,10 +558,12 @@ class Repository:
             "by_department": by_department,
             "by_owner": by_owner,
             "by_key": by_key,
+            "by_key_model": by_key_model,
             "by_model": by_model,
             "token_mix": token_mix,
             "model_account": model_account,
             "trend": trend,
+            "trend_by_model": trend_by_model,
             "accounts": accounts,
             "models": models,
             "departments": departments,
@@ -667,6 +765,35 @@ def _build_filters(
         )
         params.append(owner)
     return " AND ".join(conditions), params
+
+
+def _active_amount_cte() -> str:
+    return """
+                WITH active_amount AS (
+                    SELECT *
+                      FROM (
+                            SELECT a.*,
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY
+                                           COALESCE(a.user_id, ''),
+                                           a.utc_date,
+                                           a.model,
+                                           COALESCE(a.api_key_name, ''),
+                                           COALESCE(a.api_key, ''),
+                                           a.type
+                                       ORDER BY
+                                           COALESCE(b.parsed_at, b.uploaded_at) DESC,
+                                           b.uploaded_at DESC,
+                                           b.id DESC,
+                                           a.id DESC
+                                   ) AS active_rank
+                              FROM usage_amount a
+                              JOIN import_batch b ON b.id = a.import_batch_id
+                             WHERE b.status = 'SUCCESS'
+                           )
+                     WHERE active_rank = 1
+                )
+    """
 
 
 def _rows(cursor: sqlite3.Cursor) -> list[dict[str, Any]]:

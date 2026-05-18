@@ -1395,9 +1395,14 @@ INDEX_HTML = r"""<!doctype html>
           itemStyle: { color: item.color },
           label: item.key === "output_tokens" ? {
             show: !compactMode,
-            position: "right",
-            color: "#4e5d67",
+            position: "insideRight",
+            color: "#fff",
+            fontWeight: 700,
             fontSize: 11,
+            distance: 6,
+            hideOverlap: true,
+            overflow: "truncate",
+            width: 78,
             formatter: params => `命中率 ${cacheHitRate(params.data.source.cache_hit_tokens, params.data.source.cache_miss_tokens)}`
           } : { show: false },
           emphasis: { focus: "series" }

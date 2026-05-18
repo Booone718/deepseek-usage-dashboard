@@ -55,6 +55,8 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn("function cacheHitRate(hitTokens, missTokens)", INDEX_HTML)
         self.assertIn("`缓存命中率：${cacheHitRate(row.cache_hit_tokens, row.cache_miss_tokens)}`", INDEX_HTML)
         self.assertIn('formatter: params => `命中率 ${cacheHitRate(params.data.source.cache_hit_tokens, params.data.source.cache_miss_tokens)}`', INDEX_HTML)
+        self.assertIn('position: "insideRight"', INDEX_HTML)
+        self.assertIn("hideOverlap: true", INDEX_HTML)
         self.assertIn("const totals = tokenTotalsByModel(rows);", INDEX_HTML)
         self.assertIn("`缓存命中率：${cacheHitRate(total.hit, total.miss)}`", INDEX_HTML)
         self.assertIn("formatter: params => `命中率 ${cacheHitRate(params.data.source.hit, params.data.source.miss)}`", INDEX_HTML)

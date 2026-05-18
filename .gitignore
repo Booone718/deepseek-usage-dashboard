@@ -19,6 +19,9 @@ venv/
 .env
 .env.*
 !.env.example
+/secrets/
+/.secrets/
+/deepseek-export.curl
 
 # Generated dashboard from the old static workflow
 /dashboard.html

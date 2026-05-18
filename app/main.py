@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Red
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 
+from .auto_import import AutoImportScheduler, redact_sensitive_text, run_auto_import_once
 from .config import Settings
 from .parser import load_usage_data
 from .repository import Repository, now_iso
@@ -22,6 +23,7 @@ settings = Settings()
 settings.ensure_dirs()
 repo = Repository(settings.db_path, settings.data_dir)
 security = HTTPBasic(auto_error=False)
+auto_import_scheduler: AutoImportScheduler | None = None
 
 app = FastAPI(title="DeepSeek Usage Dashboard")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
@@ -41,10 +43,24 @@ def require_auth(credentials: Annotated[HTTPBasicCredentials | None, Depends(sec
 
 @app.on_event("startup")
 def startup() -> None:
+    global auto_import_scheduler
     settings.ensure_dirs()
     repo.init_db()
     if settings.cleanup_enabled:
         repo.cleanup_uploads(settings.upload_retention_days)
+    if settings.auto_import_enabled and auto_import_scheduler is None:
+        auto_import_scheduler = AutoImportScheduler(
+            job=_run_auto_import_job,
+            daily_time=settings.auto_import_daily_time,
+            timezone_name=settings.auto_import_timezone,
+        )
+        auto_import_scheduler.start()
+
+
+@app.on_event("shutdown")
+def shutdown() -> None:
+    if auto_import_scheduler:
+        auto_import_scheduler.stop()
 
 
 @app.get("/health", response_class=PlainTextResponse)
@@ -123,6 +139,29 @@ def list_imports() -> list[dict[str, Any]]:
     return repo.list_imports()
 
 
+@app.get("/api/auto-import/status", dependencies=[Depends(require_auth)])
+def auto_import_status() -> dict[str, Any]:
+    if not settings.auto_import_enabled:
+        return {
+            "enabled": False,
+            "daily_time": settings.auto_import_daily_time,
+            "timezone": settings.auto_import_timezone,
+        }
+    if not auto_import_scheduler:
+        return {"enabled": True, "last_status": "NOT_STARTED"}
+    return auto_import_scheduler.status()
+
+
+@app.post("/api/auto-import/run", dependencies=[Depends(require_auth)])
+def run_auto_import() -> dict[str, Any]:
+    if auto_import_scheduler:
+        return auto_import_scheduler.run_once()
+    try:
+        return _run_auto_import_job()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=redact_sensitive_text(str(exc))) from exc
+
+
 @app.delete("/api/imports/{batch_id}", dependencies=[Depends(require_auth)])
 def delete_import(batch_id: str) -> dict[str, Any]:
     deleted = repo.delete_import(batch_id)
@@ -190,6 +229,16 @@ def export_accounts() -> StreamingResponse:
 def cleanup() -> dict[str, Any]:
     removed = repo.cleanup_uploads(settings.upload_retention_days)
     return {"removed_upload_files": removed}
+
+
+def _run_auto_import_job() -> dict[str, Any]:
+    return run_auto_import_once(
+        repo=repo,
+        data_dir=settings.data_dir,
+        tmp_extract_dir=settings.tmp_extract_dir,
+        curl_file=settings.deepseek_export_curl_file,
+        default_user_id=settings.deepseek_single_account_user_id,
+    )
 
 
 @app.exception_handler(HTTPException)

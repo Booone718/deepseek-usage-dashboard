@@ -10,6 +10,13 @@ class Settings:
         self.upload_retention_days = int(os.getenv("UPLOAD_RETENTION_DAYS", "365"))
         self.cleanup_enabled = os.getenv("CLEANUP_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
         self.app_password = os.getenv("APP_PASSWORD", "")
+        self.auto_import_enabled = os.getenv("AUTO_IMPORT_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+        self.deepseek_export_curl_file = Path(
+            os.getenv("DEEPSEEK_EXPORT_CURL_FILE", "/app/secrets/deepseek-export.curl")
+        )
+        self.deepseek_single_account_user_id = os.getenv("DEEPSEEK_SINGLE_ACCOUNT_USER_ID", "").strip()
+        self.auto_import_daily_time = os.getenv("AUTO_IMPORT_DAILY_TIME", "20:30")
+        self.auto_import_timezone = os.getenv("AUTO_IMPORT_TIMEZONE", "Asia/Shanghai")
 
     @property
     def db_path(self) -> Path:

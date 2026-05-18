@@ -13,6 +13,7 @@ DeepSeek Usage Dashboard 是一个面向 DeepSeek 控制台用量导出文件的
 - 使用本地内置 ECharts，提供可悬停、可缩放、可点击联动筛选的趋势图、占比图、排行图和热力图
 - 原始 ZIP 按导入批次归档，临时解压目录解析完成后自动清理
 - 支持重复 ZIP 去重、导入批次撤销和过期原始 ZIP 清理
+- 支持单账号模式按本地 cURL secret 每天定时拉取 DeepSeek 用量 ZIP 并导入
 - 支持可选 HTTP Basic Auth
 
 ## 快速开始
@@ -61,8 +62,25 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 | `UPLOAD_RETENTION_DAYS` | `365` | 原始 ZIP 保留天数 |
 | `CLEANUP_ENABLED` | `true` | 是否启用过期原始 ZIP 清理 |
 | `APP_PASSWORD` | 空 | 设置后启用 HTTP Basic Auth，用户名任意，密码为该值 |
+| `AUTO_IMPORT_ENABLED` | `false` | 是否启用每天自动导入 |
+| `DEEPSEEK_EXPORT_CURL_FILE` | `/app/secrets/deepseek-export.curl` | DeepSeek 用量导出请求 cURL secret 文件路径 |
+| `DEEPSEEK_SINGLE_ACCOUNT_USER_ID` | 空 | 单账号自动导入时补写到明细中的固定 `user_id`，启用自动导入时必填 |
+| `AUTO_IMPORT_DAILY_TIME` | `20:30` | 每天执行时间，格式 `HH:MM` |
+| `AUTO_IMPORT_TIMEZONE` | `Asia/Shanghai` | 自动导入使用的时区 |
 
 可复制 `.env.example` 作为本地配置参考。
+
+## 单账号自动导入
+
+自动导入使用服务器本地 secret，不把 DeepSeek 登录态提交到 Git。配置步骤：
+
+1. 在浏览器登录 DeepSeek 开放平台，进入 `https://platform.deepseek.com/usage`。
+2. 选择月份并点击一次导出，在开发者工具 Network 中找到导出 ZIP 的请求。
+3. 复制该请求为 cURL，写入服务器本地 `secrets/deepseek-export.curl`。
+4. 在服务器本地配置 `AUTO_IMPORT_ENABLED=true` 和 `DEEPSEEK_SINGLE_ACCOUNT_USER_ID`。
+5. 重启服务。系统会按 `AUTO_IMPORT_DAILY_TIME` 每天执行，也可以调用 `POST /api/auto-import/run` 手动触发一次。
+
+`secrets/` 默认被 `.gitignore` 忽略。cURL 文件中可能包含 Cookie、CSRF token 等登录态，只能保存在服务器本地，不能提交到仓库、镜像或日志。
 
 ## 数据目录
 
@@ -71,6 +89,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 ```text
 data/
   uploads/raw/       # 原始 ZIP，按导入批次保存
+  tmp/auto-import-downloads/ # 自动导入下载的临时 ZIP
   tmp/extract/       # 临时解压目录，解析完成后删除
   db/                # SQLite 数据库
   exports/           # 预留导出目录

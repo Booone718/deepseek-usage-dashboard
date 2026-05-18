@@ -681,7 +681,7 @@ INDEX_HTML = r"""<!doctype html>
       </div>
 
       <div class="chart-grid">
-        <div class="panel chart-panel span-6">
+        <div id="departmentCostPanel" class="panel chart-panel span-6 multi-account-only">
           <div class="panel-head">
             <div>
               <h2>部门费用分布</h2>
@@ -690,7 +690,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div id="departmentChart"></div>
         </div>
-        <div class="panel chart-panel span-6">
+        <div id="ownerCostPanel" class="panel chart-panel span-6 multi-account-only">
           <div class="panel-head">
             <div>
               <h2>负责人费用分布</h2>
@@ -699,7 +699,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div id="ownerChart"></div>
         </div>
-        <div id="accountHeatmapPanel" class="panel chart-panel span-8 account-comparison-only">
+        <div id="accountHeatmapPanel" class="panel chart-panel span-8 multi-account-only">
           <div class="panel-head">
             <div>
               <h2>账号-模型热力图</h2>
@@ -708,7 +708,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div id="heatmapChart"></div>
         </div>
-        <div class="panel chart-panel span-4">
+        <div id="departmentSummaryPanel" class="panel chart-panel span-4 multi-account-only">
           <div class="panel-head">
             <div>
               <h2>部门汇总</h2>
@@ -720,11 +720,11 @@ INDEX_HTML = r"""<!doctype html>
       </div>
 
       <div class="grid two">
-        <div id="accountSummaryPanel" class="panel account-comparison-only">
+        <div id="accountSummaryPanel" class="panel multi-account-only">
           <h2>账号汇总</h2>
           <div class="table-wrap"><table id="accountTable"></table></div>
         </div>
-        <div class="panel">
+        <div id="modelSummaryPanel" class="panel multi-account-only">
           <h2>模型汇总</h2>
           <div class="table-wrap"><table id="modelTable"></table></div>
         </div>
@@ -943,9 +943,11 @@ INDEX_HTML = r"""<!doctype html>
 
     function applyAccountMode(accountMode) {
       const singleAccountMode = accountMode !== "multiple";
-      document.querySelectorAll(".account-comparison-only").forEach(panel => {
+      document.querySelectorAll(".multi-account-only").forEach(panel => {
         panel.classList.toggle("hidden", singleAccountMode);
       });
+      if (singleAccountMode) disposeChart("departmentChart");
+      if (singleAccountMode) disposeChart("ownerChart");
       if (singleAccountMode) disposeChart("heatmapChart");
     }
 
@@ -972,25 +974,27 @@ INDEX_HTML = r"""<!doctype html>
       renderModelShareChart(data.by_model);
       renderKeyModelRankChart(data.by_key_model || [], data.by_key || []);
       renderTokenMixChart(data.token_mix);
-      const departmentMetric = sumRows(data.by_department, "cost") > 0 ? "cost" : "tokens";
-      const ownerMetric = sumRows(data.by_owner, "cost") > 0 ? "cost" : "tokens";
-      renderRankChart(
-        "departmentChart",
-        data.by_department.slice(0, 8),
-        "department",
-        departmentMetric,
-        (value) => departmentMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
-        (row) => `${fmt.format(row.account_count || 0)} 个账号`
-      );
-      renderRankChart(
-        "ownerChart",
-        data.by_owner.slice(0, 8),
-        "owner",
-        ownerMetric,
-        (value) => ownerMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
-        (row) => `${compact.format(row.tokens || 0)} Token`
-      );
-      if (data.account_mode === "multiple") renderHeatmapChart(data.model_account);
+      if (data.account_mode === "multiple") {
+        const departmentMetric = sumRows(data.by_department, "cost") > 0 ? "cost" : "tokens";
+        const ownerMetric = sumRows(data.by_owner, "cost") > 0 ? "cost" : "tokens";
+        renderRankChart(
+          "departmentChart",
+          data.by_department.slice(0, 8),
+          "department",
+          departmentMetric,
+          (value) => departmentMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
+          (row) => `${fmt.format(row.account_count || 0)} 个账号`
+        );
+        renderRankChart(
+          "ownerChart",
+          data.by_owner.slice(0, 8),
+          "owner",
+          ownerMetric,
+          (value) => ownerMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
+          (row) => `${compact.format(row.tokens || 0)} Token`
+        );
+        renderHeatmapChart(data.model_account);
+      }
       renderDepartmentTable(data.by_department);
       renderAccountTable(data.by_account);
       renderModelTable(data.by_model);

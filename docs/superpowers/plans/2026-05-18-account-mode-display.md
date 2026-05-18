@@ -4,7 +4,7 @@
 
 **Goal:** Add single-account and multi-account display modes to the DeepSeek usage dashboard without changing existing import or account mapping data.
 
-**Architecture:** The repository layer will compute a global distinct non-empty `user_id` count from successful active usage rows and expose `account_mode` plus `global_account_count` in `/api/dashboard`. The browser will use that explicit mode to hide only account-comparison panels in single-account mode while preserving account filtering and mapping maintenance.
+**Architecture:** The repository layer will compute a global distinct non-empty `user_id` count from successful active usage rows and expose `account_mode` plus `global_account_count` in `/api/dashboard`. The browser will use that explicit mode to hide multi-account-only panels in single-account mode while preserving account filtering, API Key analysis, trend analysis, model share, token mix, and mapping maintenance.
 
 **Tech Stack:** Python 3.13, FastAPI, SQLite, unittest, inline HTML/CSS/JavaScript in `app/main.py`.
 
@@ -13,7 +13,7 @@
 ## File Structure
 
 - Modify `app/repository.py`: compute `global_account_count` and `account_mode` inside `Repository.dashboard_data()`.
-- Modify `app/main.py`: add stable ids/classes for account-comparison panels and a JavaScript mode toggle.
+- Modify `app/main.py`: add stable ids/classes for multi-account-only panels and a JavaScript mode toggle.
 - Modify `tests/test_dashboard_repository.py`: add backend contract tests for global account mode.
 - Modify `tests/test_dashboard_html.py`: add HTML/JavaScript structure tests for account mode display switching.
 
@@ -149,13 +149,22 @@ Expected: both tests pass.
 Add this test to `tests/test_dashboard_html.py`:
 
 ```python
-    def test_single_account_mode_hides_only_account_comparison_panels(self) -> None:
+    def test_single_account_mode_hides_multi_account_only_panels(self) -> None:
+        self.assertIn('id="departmentCostPanel"', INDEX_HTML)
+        self.assertIn('id="ownerCostPanel"', INDEX_HTML)
         self.assertIn('id="accountHeatmapPanel"', INDEX_HTML)
+        self.assertIn('id="departmentSummaryPanel"', INDEX_HTML)
         self.assertIn('id="accountSummaryPanel"', INDEX_HTML)
-        self.assertIn('class="panel chart-panel span-8 account-comparison-only"', INDEX_HTML)
-        self.assertIn('class="panel account-comparison-only"', INDEX_HTML)
+        self.assertIn('id="modelSummaryPanel"', INDEX_HTML)
+        self.assertIn('class="panel chart-panel span-6 multi-account-only"', INDEX_HTML)
+        self.assertIn('class="panel chart-panel span-8 multi-account-only"', INDEX_HTML)
+        self.assertIn('class="panel chart-panel span-4 multi-account-only"', INDEX_HTML)
+        self.assertIn('class="panel multi-account-only"', INDEX_HTML)
         self.assertIn("function applyAccountMode(accountMode)", INDEX_HTML)
+        self.assertIn('document.querySelectorAll(".multi-account-only")', INDEX_HTML)
         self.assertIn('panel.classList.toggle("hidden", singleAccountMode)', INDEX_HTML)
+        self.assertIn('if (singleAccountMode) disposeChart("departmentChart");', INDEX_HTML)
+        self.assertIn('if (singleAccountMode) disposeChart("ownerChart");', INDEX_HTML)
         self.assertIn('if (singleAccountMode) disposeChart("heatmapChart");', INDEX_HTML)
         self.assertIn("applyAccountMode(data.account_mode)", INDEX_HTML)
         self.assertIn("renderAccountOptions(data.accounts)", INDEX_HTML)
@@ -167,37 +176,22 @@ Add this test to `tests/test_dashboard_html.py`:
 Run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_dashboard_html.DashboardHtmlTest.test_single_account_mode_hides_only_account_comparison_panels
+.\.venv\Scripts\python.exe -m unittest tests.test_dashboard_html.DashboardHtmlTest.test_single_account_mode_hides_multi_account_only_panels
 ```
 
-Expected: fails because the ids, class names, and JavaScript toggle do not exist.
+Expected: fails because the ids, class names, and JavaScript toggle do not yet cover all multi-account-only panels.
 
 - [ ] **Step 3: Add DOM hooks and CSS-compatible classes**
 
-In `app/main.py`, change the heatmap panel opening tag from:
+In `app/main.py`, mark the department cost, owner cost, account heatmap, department summary, account summary, and model summary panels as `multi-account-only` with stable ids:
 
 ```html
-        <div class="panel chart-panel span-8">
-```
-
-to:
-
-```html
-        <div id="accountHeatmapPanel" class="panel chart-panel span-8 account-comparison-only">
-```
-
-Change the account summary panel opening tag from:
-
-```html
-        <div class="panel">
-          <h2>账号汇总</h2>
-```
-
-to:
-
-```html
-        <div id="accountSummaryPanel" class="panel account-comparison-only">
-          <h2>账号汇总</h2>
+        <div id="departmentCostPanel" class="panel chart-panel span-6 multi-account-only">
+        <div id="ownerCostPanel" class="panel chart-panel span-6 multi-account-only">
+        <div id="accountHeatmapPanel" class="panel chart-panel span-8 multi-account-only">
+        <div id="departmentSummaryPanel" class="panel chart-panel span-4 multi-account-only">
+        <div id="accountSummaryPanel" class="panel multi-account-only">
+        <div id="modelSummaryPanel" class="panel multi-account-only">
 ```
 
 - [ ] **Step 4: Add JavaScript display toggle**
@@ -207,9 +201,11 @@ In `app/main.py`, add this function before `loadDashboard()`:
 ```javascript
     function applyAccountMode(accountMode) {
       const singleAccountMode = accountMode !== "multiple";
-      document.querySelectorAll(".account-comparison-only").forEach(panel => {
+      document.querySelectorAll(".multi-account-only").forEach(panel => {
         panel.classList.toggle("hidden", singleAccountMode);
       });
+      if (singleAccountMode) disposeChart("departmentChart");
+      if (singleAccountMode) disposeChart("ownerChart");
       if (singleAccountMode) disposeChart("heatmapChart");
     }
 ```
@@ -220,16 +216,30 @@ Inside `loadDashboard()`, after `dashboardData = data;`, add:
       applyAccountMode(data.account_mode);
 ```
 
-Change:
+Render department, owner, and heatmap charts only in multiple-account mode:
 
 ```javascript
-      renderHeatmapChart(data.model_account);
-```
-
-to:
-
-```javascript
-      if (data.account_mode === "multiple") renderHeatmapChart(data.model_account);
+      if (data.account_mode === "multiple") {
+        const departmentMetric = sumRows(data.by_department, "cost") > 0 ? "cost" : "tokens";
+        const ownerMetric = sumRows(data.by_owner, "cost") > 0 ? "cost" : "tokens";
+        renderRankChart(
+          "departmentChart",
+          data.by_department.slice(0, 8),
+          "department",
+          departmentMetric,
+          (value) => departmentMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
+          (row) => `${fmt.format(row.account_count || 0)} 个账号`
+        );
+        renderRankChart(
+          "ownerChart",
+          data.by_owner.slice(0, 8),
+          "owner",
+          ownerMetric,
+          (value) => ownerMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
+          (row) => `${compact.format(row.tokens || 0)} Token`
+        );
+        renderHeatmapChart(data.model_account);
+      }
 ```
 
 Keep these existing calls unchanged:
@@ -244,7 +254,7 @@ Keep these existing calls unchanged:
 Run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_dashboard_html.DashboardHtmlTest.test_single_account_mode_hides_only_account_comparison_panels
+.\.venv\Scripts\python.exe -m unittest tests.test_dashboard_html.DashboardHtmlTest.test_single_account_mode_hides_multi_account_only_panels
 ```
 
 Expected: pass.

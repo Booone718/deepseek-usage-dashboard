@@ -193,6 +193,74 @@ class DashboardRepositoryTest(unittest.TestCase):
             )
         )
 
+    def test_dashboard_marks_single_account_mode_from_global_usage(self) -> None:
+        self.create_batch("batch1")
+        self.repo.save_import_data(
+            "batch1",
+            amount_rows(
+                [
+                    {
+                        "user_id": "user-a",
+                        "utc_date": "2026-05-01",
+                        "model": "deepseek-chat",
+                        "api_key_name": "prod-key",
+                        "api_key": "sk-prod",
+                        "type": "input_cache_miss_tokens",
+                        "price": 0.000001,
+                        "amount": 100,
+                        "_source": "amount.csv",
+                    }
+                ]
+            ),
+            empty_cost_rows(),
+            [],
+        )
+
+        data = self.repo.dashboard_data()
+
+        self.assertEqual(data["account_mode"], "single")
+        self.assertEqual(data["global_account_count"], 1)
+
+    def test_dashboard_account_mode_uses_global_accounts_not_current_filter(self) -> None:
+        self.create_batch("batch1")
+        self.repo.save_import_data(
+            "batch1",
+            amount_rows(
+                [
+                    {
+                        "user_id": "user-a",
+                        "utc_date": "2026-05-01",
+                        "model": "deepseek-chat",
+                        "api_key_name": "key-a",
+                        "api_key": "sk-a",
+                        "type": "input_cache_miss_tokens",
+                        "price": 0.000001,
+                        "amount": 100,
+                        "_source": "amount.csv",
+                    },
+                    {
+                        "user_id": "user-b",
+                        "utc_date": "2026-05-02",
+                        "model": "deepseek-chat",
+                        "api_key_name": "key-b",
+                        "api_key": "sk-b",
+                        "type": "output_tokens",
+                        "price": 0.000002,
+                        "amount": 50,
+                        "_source": "amount.csv",
+                    },
+                ]
+            ),
+            empty_cost_rows(),
+            [],
+        )
+
+        data = self.repo.dashboard_data(user_id="user-a")
+
+        self.assertEqual(data["kpi"]["account_count"], 1)
+        self.assertEqual(data["account_mode"], "multiple")
+        self.assertEqual(data["global_account_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

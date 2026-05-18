@@ -28,6 +28,18 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertLess(api_key_table_position, department_chart_position)
         self.assertLess(api_key_table_position, account_summary_position)
 
+    def test_single_account_mode_hides_only_account_comparison_panels(self) -> None:
+        self.assertIn('id="accountHeatmapPanel"', INDEX_HTML)
+        self.assertIn('id="accountSummaryPanel"', INDEX_HTML)
+        self.assertIn('class="panel chart-panel span-8 account-comparison-only"', INDEX_HTML)
+        self.assertIn('class="panel account-comparison-only"', INDEX_HTML)
+        self.assertIn("function applyAccountMode(accountMode)", INDEX_HTML)
+        self.assertIn('panel.classList.toggle("hidden", singleAccountMode)', INDEX_HTML)
+        self.assertIn('if (singleAccountMode) disposeChart("heatmapChart");', INDEX_HTML)
+        self.assertIn("applyAccountMode(data.account_mode)", INDEX_HTML)
+        self.assertIn("renderAccountOptions(data.accounts)", INDEX_HTML)
+        self.assertIn("renderKeyModelRankChart(data.by_key_model || [], data.by_key || [])", INDEX_HTML)
+
 
 if __name__ == "__main__":
     unittest.main()

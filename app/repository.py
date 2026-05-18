@@ -258,6 +258,13 @@ class Repository:
         active_amount_cte = _active_amount_cte()
 
         with self.connect() as conn:
+            global_account_count = conn.execute(
+                f"""
+                {active_amount_cte}
+                SELECT COUNT(DISTINCT NULLIF(TRIM(user_id), '')) AS account_count
+                  FROM active_amount
+                """
+            ).fetchone()["account_count"]
             kpi = conn.execute(
                 f"""
                 {active_amount_cte}
@@ -541,6 +548,8 @@ class Repository:
             ]
 
         return {
+            "account_mode": "single" if int(global_account_count or 0) <= 1 else "multiple",
+            "global_account_count": int(global_account_count or 0),
             "kpi": {
                 "total_tokens": kpi["total_tokens"],
                 "total_requests": kpi["total_requests"],

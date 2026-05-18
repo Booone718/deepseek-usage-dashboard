@@ -699,7 +699,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div id="ownerChart"></div>
         </div>
-        <div class="panel chart-panel span-8">
+        <div id="accountHeatmapPanel" class="panel chart-panel span-8 account-comparison-only">
           <div class="panel-head">
             <div>
               <h2>账号-模型热力图</h2>
@@ -720,7 +720,7 @@ INDEX_HTML = r"""<!doctype html>
       </div>
 
       <div class="grid two">
-        <div class="panel">
+        <div id="accountSummaryPanel" class="panel account-comparison-only">
           <h2>账号汇总</h2>
           <div class="table-wrap"><table id="accountTable"></table></div>
         </div>
@@ -941,9 +941,18 @@ INDEX_HTML = r"""<!doctype html>
       return params.toString();
     }
 
+    function applyAccountMode(accountMode) {
+      const singleAccountMode = accountMode !== "multiple";
+      document.querySelectorAll(".account-comparison-only").forEach(panel => {
+        panel.classList.toggle("hidden", singleAccountMode);
+      });
+      if (singleAccountMode) disposeChart("heatmapChart");
+    }
+
     async function loadDashboard() {
       const data = await api(`/api/dashboard?${queryString()}`);
       dashboardData = data;
+      applyAccountMode(data.account_mode);
       const totalTokens = Number(data.kpi.total_tokens || 0);
       const totalCost = Number(data.kpi.total_cost || 0);
       $("kpiCost").textContent = money.format(data.kpi.total_cost || 0);
@@ -981,7 +990,7 @@ INDEX_HTML = r"""<!doctype html>
         (value) => ownerMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
         (row) => `${compact.format(row.tokens || 0)} Token`
       );
-      renderHeatmapChart(data.model_account);
+      if (data.account_mode === "multiple") renderHeatmapChart(data.model_account);
       renderDepartmentTable(data.by_department);
       renderAccountTable(data.by_account);
       renderModelTable(data.by_model);

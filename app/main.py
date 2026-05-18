@@ -1008,7 +1008,7 @@ INDEX_HTML = r"""<!doctype html>
       const totalCost = Number(data.kpi.total_cost || 0);
       $("kpiCost").textContent = money.format(data.kpi.total_cost || 0);
       $("kpiRequests").textContent = fmt.format(data.kpi.total_requests || 0);
-      $("kpiTokens").textContent = fmt.format(data.kpi.total_tokens || 0);
+      $("kpiTokens").textContent = formatTokenCount(data.kpi.total_tokens || 0);
       $("kpiAccounts").textContent = fmt.format(data.kpi.account_count || 0);
       $("kpiKeys").textContent = fmt.format(data.kpi.key_count || 0);
       $("kpiModels").textContent = fmt.format(data.kpi.model_count || 0);
@@ -1079,6 +1079,37 @@ INDEX_HTML = r"""<!doctype html>
     function toNumber(value) {
       const number = Number(value || 0);
       return Number.isFinite(number) ? number : 0;
+    }
+
+    function formatTokenCount(value) {
+      const tokens = toNumber(value);
+      return `${compact.format(tokens)} Token`;
+    }
+
+    function cacheHitRate(hitTokens, missTokens) {
+      return percentFmt.format(cacheHitRatio(hitTokens, missTokens));
+    }
+
+    function cacheHitRatio(hitTokens, missTokens) {
+      const hit = toNumber(hitTokens);
+      const miss = toNumber(missTokens);
+      const inputTotal = hit + miss;
+      return inputTotal ? hit / inputTotal : 0;
+    }
+
+    function tokenTotalsByModel(rows) {
+      const totals = new Map();
+      (rows || []).forEach(row => {
+        if (!totals.has(row.model)) {
+          totals.set(row.model, { tokens: 0, hit: 0, miss: 0 });
+        }
+        const total = totals.get(row.model);
+        const amount = toNumber(row.amount);
+        total.tokens += amount;
+        if (row.type === "input_cache_hit_tokens") total.hit += amount;
+        if (row.type === "input_cache_miss_tokens") total.miss += amount;
+      });
+      return totals;
     }
 
     function sumRows(rows, key) {
@@ -1223,6 +1254,17 @@ INDEX_HTML = r"""<!doctype html>
         data: rows.map(row => ({ value: toNumber(row.tokens), filter: { date: row.utc_date } })),
         emphasis: { focus: "series" }
       }];
+      const cacheRateSeries = {
+        name: "缓存命中率",
+        type: "line",
+        smooth: true,
+        yAxisIndex: 2,
+        symbolSize: compactMode ? 5 : 7,
+        lineStyle: { width: 2.4, type: "dashed", color: "#168a5a" },
+        itemStyle: { color: "#168a5a" },
+        data: rows.map(row => ({ value: cacheHitRatio(row.cache_hit_tokens, row.cache_miss_tokens), filter: { date: row.utc_date } })),
+        emphasis: { focus: "series" }
+      };
       chart.setOption({
         ...chartBaseOption(),
         tooltip: {
@@ -1238,9 +1280,10 @@ INDEX_HTML = r"""<!doctype html>
               `请求数：${fmt.format(row.requests || 0)}`,
               `输入 Token：${fmt.format(row.input_tokens || 0)}`,
               `输出 Token：${fmt.format(row.output_tokens || 0)}`,
+              `缓存命中率：${cacheHitRate(row.cache_hit_tokens, row.cache_miss_tokens)}`,
               ...items
-                .filter(item => item.seriesName !== "费用")
-                .map(item => `${escapeHtml(item.seriesName)}：${fmt.format(item.value || 0)}`)
+                .filter(item => item.seriesName !== "费用" && item.seriesName !== "缓存命中率")
+                .map(item => `${escapeHtml(item.seriesName)}：${formatTokenCount(item.value || 0)}`)
             ].join("<br>");
           }
         },
@@ -1255,12 +1298,13 @@ INDEX_HTML = r"""<!doctype html>
             saveAsImage: { pixelRatio: 2 }
           }
         },
-        grid: { left: compactMode ? 28 : 54, right: compactMode ? 18 : 60, top: compactMode ? 54 : 58, bottom: rows.length > 12 ? 64 : compactMode ? 44 : 38, containLabel: true },
+        grid: { left: compactMode ? 28 : 54, right: compactMode ? 58 : 104, top: compactMode ? 54 : 58, bottom: rows.length > 12 ? 64 : compactMode ? 44 : 38, containLabel: true },
         dataZoom: rows.length > 12 ? [{ type: "slider", height: 18, bottom: 20 }, { type: "inside" }] : [],
         xAxis: { type: "category", data: dates, boundaryGap: true, axisLabel: { color: "#697873", hideOverlap: true } },
         yAxis: [
           { type: "value", name: compactMode ? "" : "Token", axisLabel: { formatter: value => compact.format(value), color: "#697873" }, splitLine: { lineStyle: { color: "#e5ece5" } } },
-          { type: "value", name: compactMode ? "" : "费用", axisLabel: { formatter: value => money.format(value), color: "#697873" }, splitLine: { show: false } }
+          { type: "value", name: compactMode ? "" : "费用", axisLabel: { formatter: value => money.format(value), color: "#697873" }, splitLine: { show: false } },
+          { type: "value", name: compactMode ? "" : "命中率", min: 0, max: 1, position: "right", offset: compactMode ? 36 : 52, axisLabel: { formatter: value => percentFmt.format(value), color: "#697873" }, splitLine: { show: false } }
         ],
         series: [
           {
@@ -1272,7 +1316,7 @@ INDEX_HTML = r"""<!doctype html>
             itemStyle: { borderRadius: [4, 4, 0, 0], color: "#d6a13d" },
             emphasis: { focus: "series" }
           }
-        ].concat(tokenSeries)
+        ].concat(tokenSeries, [cacheRateSeries])
       }, true);
       applyEchartClick(chart);
     }
@@ -1349,6 +1393,13 @@ INDEX_HTML = r"""<!doctype html>
             filter: { model: row.model }
           })),
           itemStyle: { color: item.color },
+          label: item.key === "output_tokens" ? {
+            show: !compactMode,
+            position: "right",
+            color: "#4e5d67",
+            fontSize: 11,
+            formatter: params => `命中率 ${cacheHitRate(params.data.source.cache_hit_tokens, params.data.source.cache_miss_tokens)}`
+          } : { show: false },
           emphasis: { focus: "series" }
         })),
         tooltip: {
@@ -1359,10 +1410,11 @@ INDEX_HTML = r"""<!doctype html>
             const row = params[0]?.data?.source || {};
             return [
               `<strong>${escapeHtml(row.model || "")}</strong>`,
-              `总 Token：${fmt.format(row.tokens || 0)}`,
-              `输入命中缓存：${fmt.format(row.cache_hit_tokens || 0)}`,
-              `输入未命中缓存：${fmt.format(row.cache_miss_tokens || 0)}`,
-              `输出：${fmt.format(row.output_tokens || 0)}`,
+              `总 Token：${formatTokenCount(row.tokens || 0)}`,
+              `输入命中缓存：${formatTokenCount(row.cache_hit_tokens || 0)}`,
+              `输入未命中缓存：${formatTokenCount(row.cache_miss_tokens || 0)}`,
+              `缓存命中率：${cacheHitRate(row.cache_hit_tokens, row.cache_miss_tokens)}`,
+              `输出：${formatTokenCount(row.output_tokens || 0)}`,
               `每百万 Token 成本：${money.format(row.cost_per_million_tokens || 0)}`
             ].join("<br>");
           }
@@ -1525,14 +1577,13 @@ INDEX_HTML = r"""<!doctype html>
       const chart = chartElement("tokenMixChart");
       if (!chart) return;
       const compactMode = isCompactViewport();
-      const modelTotals = new Map();
+      const totals = tokenTotalsByModel(rows);
       const values = new Map();
       rows.forEach(row => {
-        modelTotals.set(row.model, (modelTotals.get(row.model) || 0) + toNumber(row.amount));
         values.set(`${row.model}|||${row.type}`, toNumber(row.amount));
       });
-      const models = Array.from(modelTotals.entries())
-        .sort((a, b) => b[1] - a[1])
+      const models = Array.from(totals.entries())
+        .sort((a, b) => b[1].tokens - a[1].tokens)
         .slice(0, compactMode ? 6 : 8)
         .map(item => item[0]);
       chart.setOption({
@@ -1548,9 +1599,17 @@ INDEX_HTML = r"""<!doctype html>
           barMaxWidth: 34,
           data: models.map(modelName => ({
             value: values.get(`${modelName}|||${item.key}`) || 0,
+            source: totals.get(modelName),
             filter: { model: modelName }
           })),
           itemStyle: { color: item.color },
+          label: item.key === "output_tokens" ? {
+            show: !compactMode,
+            position: "top",
+            color: "#4e5d67",
+            fontSize: 11,
+            formatter: params => `命中率 ${cacheHitRate(params.data.source.hit, params.data.source.miss)}`
+          } : { show: false },
           emphasis: { focus: "series" }
         })),
         tooltip: {
@@ -1558,11 +1617,12 @@ INDEX_HTML = r"""<!doctype html>
           trigger: "axis",
           axisPointer: { type: "shadow" },
           formatter: items => {
-            const total = items.reduce((sum, item) => sum + toNumber(item.value), 0);
+            const total = totals.get(items[0]?.axisValue || "") || { tokens: 0, hit: 0, miss: 0 };
             return [
               `<strong>${escapeHtml(items[0]?.axisValue || "")}</strong>`,
-              `总 Token：${fmt.format(total)}`,
-              ...items.map(item => `${escapeHtml(item.seriesName)}：${fmt.format(item.value || 0)}`)
+              `总 Token：${formatTokenCount(total.tokens)}`,
+              `缓存命中率：${cacheHitRate(total.hit, total.miss)}`,
+              ...items.map(item => `${escapeHtml(item.seriesName)}：${formatTokenCount(item.value || 0)}`)
             ].join("<br>");
           }
         }

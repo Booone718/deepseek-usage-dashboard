@@ -49,6 +49,26 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn("renderAccountOptions(data.accounts)", INDEX_HTML)
         self.assertIn("renderKeyModelRankChart(data.by_key_model || [], data.by_key || [])", INDEX_HTML)
 
+    def test_dashboard_formats_total_tokens_and_shows_cache_hit_rate_on_token_charts(self) -> None:
+        self.assertIn("function formatTokenCount(value)", INDEX_HTML)
+        self.assertIn('$("kpiTokens").textContent = formatTokenCount(data.kpi.total_tokens || 0);', INDEX_HTML)
+        self.assertIn("function cacheHitRate(hitTokens, missTokens)", INDEX_HTML)
+        self.assertIn("`缓存命中率：${cacheHitRate(row.cache_hit_tokens, row.cache_miss_tokens)}`", INDEX_HTML)
+        self.assertIn('formatter: params => `命中率 ${cacheHitRate(params.data.source.cache_hit_tokens, params.data.source.cache_miss_tokens)}`', INDEX_HTML)
+        self.assertIn("const totals = tokenTotalsByModel(rows);", INDEX_HTML)
+        self.assertIn("`缓存命中率：${cacheHitRate(total.hit, total.miss)}`", INDEX_HTML)
+        self.assertIn("formatter: params => `命中率 ${cacheHitRate(params.data.source.hit, params.data.source.miss)}`", INDEX_HTML)
+
+    def test_trend_chart_shows_cache_hit_rate_series(self) -> None:
+        self.assertIn("function cacheHitRatio(hitTokens, missTokens)", INDEX_HTML)
+        self.assertIn('name: "缓存命中率"', INDEX_HTML)
+        self.assertIn("yAxisIndex: 2", INDEX_HTML)
+        self.assertIn('name: compactMode ? "" : "命中率"', INDEX_HTML)
+        self.assertIn("axisLabel: { formatter: value => percentFmt.format(value)", INDEX_HTML)
+        self.assertIn("data: rows.map(row => ({ value: cacheHitRatio(row.cache_hit_tokens, row.cache_miss_tokens)", INDEX_HTML)
+        self.assertIn("`缓存命中率：${cacheHitRate(row.cache_hit_tokens, row.cache_miss_tokens)}`", INDEX_HTML)
+        self.assertIn('item.seriesName !== "费用" && item.seriesName !== "缓存命中率"', INDEX_HTML)
+
 
 if __name__ == "__main__":
     unittest.main()

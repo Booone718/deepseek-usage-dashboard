@@ -1379,7 +1379,7 @@ INDEX_HTML = r"""<!doctype html>
       chart.setOption({
         ...chartBaseOption(),
         legend: { type: "scroll", top: 0, left: 0, right: 0, itemWidth: 10, itemHeight: 10 },
-        grid: { left: compactMode ? 84 : 104, right: 18, top: 42, bottom: 18, containLabel: true },
+        grid: { left: compactMode ? 8 : 12, right: compactMode ? 12 : 86, top: 42, bottom: 18, containLabel: true },
         xAxis: { type: "value", axisLabel: { formatter: value => compact.format(value), color: "#697873" }, splitLine: { lineStyle: { color: "#e5ece5" } } },
         yAxis: { type: "category", data: models, axisLabel: { color: "#22302c", width: compactMode ? 72 : 98, overflow: "truncate" } },
         series: tokenTypeSeries.map(item => ({
@@ -1395,14 +1395,17 @@ INDEX_HTML = r"""<!doctype html>
           itemStyle: { color: item.color },
           label: item.key === "output_tokens" ? {
             show: !compactMode,
-            position: "insideRight",
-            color: "#fff",
+            position: "right",
+            color: "#375047",
             fontWeight: 700,
             fontSize: 11,
-            distance: 6,
+            distance: 8,
             hideOverlap: true,
+            backgroundColor: "rgba(255,255,255,0.92)",
+            borderRadius: 4,
+            padding: [2, 4],
             overflow: "truncate",
-            width: 78,
+            width: 72,
             formatter: params => `命中率 ${cacheHitRate(params.data.source.cache_hit_tokens, params.data.source.cache_miss_tokens)}`
           } : { show: false },
           emphasis: { focus: "series" }

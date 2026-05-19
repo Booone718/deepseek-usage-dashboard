@@ -4,7 +4,7 @@ import csv
 import hashlib
 import shutil
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -79,8 +79,9 @@ async def upload_usage(file: UploadFile = File(...)) -> JSONResponse:
     if Path(filename).suffix.lower() != ".zip":
         raise HTTPException(status_code=400, detail="只支持上传 DeepSeek 导出的 .zip 文件")
 
-    batch_id = f"imp_{datetime.now(timezone.utc).astimezone().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
-    month_dir = datetime.now(timezone.utc).astimezone().strftime("%Y/%m")
+    local_now = datetime.now().astimezone()
+    batch_id = f"imp_{local_now.strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
+    month_dir = local_now.strftime("%Y/%m")
     stored_name = f"{batch_id}_{filename}"
     relative_path = Path("uploads") / "raw" / month_dir / stored_name
     stored_path = settings.data_dir / relative_path
@@ -830,6 +831,15 @@ INDEX_HTML = r"""<!doctype html>
     const compact = new Intl.NumberFormat("zh-CN", { notation: "compact", maximumFractionDigits: 1 });
     const money = new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY", maximumFractionDigits: 4 });
     const percentFmt = new Intl.NumberFormat("zh-CN", { style: "percent", maximumFractionDigits: 1 });
+    const dateTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    });
     const palette = ["#0e6b5c", "#315f9f", "#b36b22", "#16879a", "#b04452", "#6c5270", "#168a5a", "#4e5d67"];
     const typeLabels = {
       input_cache_hit_tokens: "缓存命中输入",
@@ -1084,6 +1094,19 @@ INDEX_HTML = r"""<!doctype html>
     function formatTokenCount(value) {
       const tokens = toNumber(value);
       return `${compact.format(tokens)} Token`;
+    }
+
+    function formatDateTime(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      const parts = Object.fromEntries(
+        dateTimeFormatter
+          .formatToParts(date)
+          .filter(part => part.type !== "literal")
+          .map(part => [part.type, part.value])
+      );
+      return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
     }
 
     function cacheHitRate(hitTokens, missTokens) {
@@ -1786,7 +1809,7 @@ INDEX_HTML = r"""<!doctype html>
           <td>${escapeHtml(r.status)}</td>
           <td>${escapeHtml(r.min_utc_date || "")} 至 ${escapeHtml(r.max_utc_date || "")}</td>
           <td class="num">${fmt.format((r.amount_row_count || 0) + (r.cost_row_count || 0))}</td>
-          <td class="small">${escapeHtml(r.uploaded_at)}</td>
+          <td class="small">${escapeHtml(formatDateTime(r.uploaded_at))}</td>
           <td class="small">${escapeHtml(r.error_message || "")}</td>
           <td><button class="danger" onclick="deleteImport('${escapeHtml(r.id)}')">撤销</button></td>
         </tr>`).join("") + `</tbody>`;

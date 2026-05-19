@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+import app.repository as repository_module
 from app.repository import Repository
 
 
@@ -38,6 +42,17 @@ class DashboardRepositoryTest(unittest.TestCase):
                 "uploaded_at": f"2026-05-15T10:00:0{batch_id[-1]}+08:00",
             }
         )
+
+    def test_now_iso_uses_current_local_timezone(self) -> None:
+        class FakeDateTime:
+            @classmethod
+            def now(cls, tz=None) -> datetime:
+                if tz is not None:
+                    raise AssertionError("now_iso should use the current local timezone")
+                return datetime(2026, 5, 18, 20, 30, 1, tzinfo=ZoneInfo("Asia/Shanghai"))
+
+        with patch.object(repository_module, "datetime", FakeDateTime):
+            self.assertEqual(repository_module.now_iso(), "2026-05-18T20:30:01+08:00")
 
     def test_dashboard_uses_latest_import_for_repeated_logical_usage_rows(self) -> None:
         self.create_batch("batch1")

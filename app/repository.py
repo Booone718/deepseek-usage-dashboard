@@ -4,7 +4,7 @@ import csv
 import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -12,7 +12,7 @@ import pandas as pd
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 class Repository:
@@ -678,7 +678,7 @@ class Repository:
         return True
 
     def cleanup_uploads(self, retention_days: int) -> int:
-        cutoff = datetime.now(timezone.utc).astimezone().timestamp() - retention_days * 86400
+        cutoff = datetime.now().astimezone().timestamp() - retention_days * 86400
         removed = 0
         with self.connect() as conn:
             rows = conn.execute(

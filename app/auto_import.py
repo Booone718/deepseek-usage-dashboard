@@ -7,7 +7,7 @@ import shutil
 import threading
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Callable
 from urllib.request import Request, urlopen
@@ -114,7 +114,7 @@ class AutoImportScheduler:
                 "enabled": True,
                 "daily_time": self.daily_time,
                 "timezone": self.timezone_name,
-                "next_run_at": next_daily_run(datetime.now(timezone.utc), self.daily_time, self.timezone_name).isoformat(),
+                "next_run_at": next_daily_run(datetime.now().astimezone(), self.daily_time, self.timezone_name).isoformat(),
                 "last_started_at": self._last_started_at,
                 "last_finished_at": self._last_finished_at,
                 "last_status": self._last_status,
@@ -124,7 +124,7 @@ class AutoImportScheduler:
 
     def _loop(self) -> None:
         while not self._stop_event.is_set():
-            target = next_daily_run(datetime.now(timezone.utc), self.daily_time, self.timezone_name)
+            target = next_daily_run(datetime.now().astimezone(), self.daily_time, self.timezone_name)
             wait_seconds = max(0.0, (target - datetime.now(ZoneInfo(self.timezone_name))).total_seconds())
             if self._stop_event.wait(wait_seconds):
                 break
@@ -264,8 +264,9 @@ def import_usage_archive(
     if Path(filename).suffix.lower() != ".zip":
         raise ValueError("only DeepSeek .zip usage exports are supported")
 
-    batch_id = f"{batch_prefix}_{datetime.now(timezone.utc).astimezone().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
-    month_dir = datetime.now(timezone.utc).astimezone().strftime("%Y/%m")
+    local_now = datetime.now().astimezone()
+    batch_id = f"{batch_prefix}_{local_now.strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
+    month_dir = local_now.strftime("%Y/%m")
     relative_path = Path("uploads") / "raw" / month_dir / f"{batch_id}_{filename}"
     stored_path = data_dir / relative_path
     stored_path.parent.mkdir(parents=True, exist_ok=True)

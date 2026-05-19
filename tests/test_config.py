@@ -29,6 +29,19 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.auto_import_daily_time, "20:30")
         self.assertEqual(settings.auto_import_timezone, "Asia/Shanghai")
 
+    def test_auto_import_timezone_defaults_to_process_timezone(self) -> None:
+        with patch.dict(os.environ, {"TZ": "America/New_York"}, clear=True):
+            settings = Settings()
+
+        self.assertEqual(settings.auto_import_timezone, "America/New_York")
+
+    def test_compose_sets_configurable_process_timezone(self) -> None:
+        compose = Path(__file__).resolve().parents[1] / "docker-compose.yml"
+        text = compose.read_text(encoding="utf-8")
+
+        self.assertIn("TZ: ${TZ:-Asia/Shanghai}", text)
+        self.assertIn("AUTO_IMPORT_TIMEZONE: ${AUTO_IMPORT_TIMEZONE:-${TZ:-Asia/Shanghai}}", text)
+
 
 if __name__ == "__main__":
     unittest.main()

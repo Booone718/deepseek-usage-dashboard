@@ -16,7 +16,7 @@ class Settings:
         )
         self.deepseek_single_account_user_id = os.getenv("DEEPSEEK_SINGLE_ACCOUNT_USER_ID", "").strip()
         self.auto_import_daily_time = os.getenv("AUTO_IMPORT_DAILY_TIME", "20:30")
-        self.auto_import_timezone = os.getenv("AUTO_IMPORT_TIMEZONE", "Asia/Shanghai")
+        self.auto_import_timezone = os.getenv("AUTO_IMPORT_TIMEZONE", os.getenv("TZ", "Asia/Shanghai"))
 
     @property
     def db_path(self) -> Path:

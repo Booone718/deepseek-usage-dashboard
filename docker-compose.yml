@@ -13,13 +13,14 @@ services:
       - ./secrets:/app/secrets:ro
     environment:
       DATA_DIR: /app/data
+      TZ: ${TZ:-Asia/Shanghai}
       UPLOAD_RETENTION_DAYS: "365"
       CLEANUP_ENABLED: "true"
       AUTO_IMPORT_ENABLED: "false"
       DEEPSEEK_EXPORT_CURL_FILE: /app/secrets/deepseek-export.curl
       DEEPSEEK_SINGLE_ACCOUNT_USER_ID: ""
       AUTO_IMPORT_DAILY_TIME: "20:30"
-      AUTO_IMPORT_TIMEZONE: Asia/Shanghai
+      AUTO_IMPORT_TIMEZONE: ${AUTO_IMPORT_TIMEZONE:-${TZ:-Asia/Shanghai}}
       # Set a password to enable HTTP Basic Auth.
       # APP_PASSWORD: "change-me"
     restart: unless-stopped

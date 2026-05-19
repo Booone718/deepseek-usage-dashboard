@@ -59,6 +59,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `DATA_DIR` | `data` | 数据目录 |
+| `TZ` | `Asia/Shanghai` | 容器运行时区，也用于默认自动导入时区和服务端写入时间 |
 | `UPLOAD_RETENTION_DAYS` | `365` | 原始 ZIP 保留天数 |
 | `CLEANUP_ENABLED` | `true` | 是否启用过期原始 ZIP 清理 |
 | `APP_PASSWORD` | 空 | 设置后启用 HTTP Basic Auth，用户名任意，密码为该值 |
@@ -66,7 +67,9 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 | `DEEPSEEK_EXPORT_CURL_FILE` | `/app/secrets/deepseek-export.curl` | DeepSeek 用量导出请求 cURL secret 文件路径 |
 | `DEEPSEEK_SINGLE_ACCOUNT_USER_ID` | 空 | 单账号自动导入时补写到明细中的固定 `user_id`，启用自动导入时必填 |
 | `AUTO_IMPORT_DAILY_TIME` | `20:30` | 每天执行时间，格式 `HH:MM` |
-| `AUTO_IMPORT_TIMEZONE` | `Asia/Shanghai` | 自动导入使用的时区 |
+| `AUTO_IMPORT_TIMEZONE` | `TZ` 的值，未设置 `TZ` 时为 `Asia/Shanghai` | 自动导入使用的时区，可覆盖容器运行时区 |
+
+导入记录的服务端写入时间使用容器当前时区；页面展示时按访问者浏览器当前时区格式化为 `YYYY-MM-DD HH:mm:ss`。
 
 可复制 `.env.example` 作为本地配置参考。
 

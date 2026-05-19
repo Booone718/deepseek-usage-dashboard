@@ -74,6 +74,13 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn("`缓存命中率：${cacheHitRate(row.cache_hit_tokens, row.cache_miss_tokens)}`", INDEX_HTML)
         self.assertIn('item.seriesName !== "费用" && item.seriesName !== "缓存命中率"', INDEX_HTML)
 
+    def test_import_record_upload_time_is_formatted_for_browser_timezone(self) -> None:
+        self.assertIn("function formatDateTime(value)", INDEX_HTML)
+        self.assertNotIn('timeZone: "Asia/Shanghai"', INDEX_HTML)
+        self.assertIn('hour12: false', INDEX_HTML)
+        self.assertIn("escapeHtml(formatDateTime(r.uploaded_at))", INDEX_HTML)
+        self.assertNotIn("escapeHtml(r.uploaded_at)", INDEX_HTML)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -641,7 +641,10 @@ INDEX_HTML = r"""<!doctype html>
         </div>
       </div>
       <div class="header-actions">
-        <button class="primary" id="uploadShortcutBtn" type="button">上传数据</button>
+        <div class="row">
+          <button class="primary" id="manualSyncBtn" type="button">立即同步</button>
+          <button id="uploadShortcutBtn" type="button">上传数据</button>
+        </div>
         <div class="muted small" id="lastRefresh"></div>
       </div>
     </header>
@@ -1823,7 +1826,33 @@ INDEX_HTML = r"""<!doctype html>
       loadDashboard();
     }
 
+    async function runManualSync() {
+      const button = $("manualSyncBtn");
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "同步中...";
+      setDashboardNotice("正在从 DeepSeek 后台同步数据...");
+      try {
+        const result = await api("/api/auto-import/run", { method: "POST" });
+        const message = result.status === "DUPLICATE"
+          ? "后台导出数据已导入过；已刷新看板。"
+          : result.status === "SUCCESS"
+            ? "同步完成；已刷新看板。"
+            : `同步完成，状态：${result.status || "UNKNOWN"}；已刷新看板。`;
+        await loadDashboard();
+        setDashboardNotice(message, "ok");
+        if ($("imports").classList.contains("active")) await loadImports();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (error) {
+        setDashboardNotice(error.message, "error");
+      } finally {
+        button.textContent = originalText;
+        button.disabled = false;
+      }
+    }
+
     $("refreshBtn").addEventListener("click", loadDashboard);
+    $("manualSyncBtn").addEventListener("click", runManualSync);
     $("uploadShortcutBtn").addEventListener("click", () => activateTab("upload"));
     $("resetBtn").addEventListener("click", () => {
       ["dateFrom", "dateTo", "accountFilter", "modelFilter", "keyFilter", "departmentFilter", "ownerFilter"].forEach(id => $(id).value = "");

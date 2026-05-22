@@ -81,6 +81,20 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn("escapeHtml(formatDateTime(r.uploaded_at))", INDEX_HTML)
         self.assertNotIn("escapeHtml(r.uploaded_at)", INDEX_HTML)
 
+    def test_header_has_manual_sync_button_that_calls_auto_import_run(self) -> None:
+        self.assertIn('id="manualSyncBtn"', INDEX_HTML)
+        self.assertIn(">立即同步</button>", INDEX_HTML)
+        self.assertIn("async function runManualSync()", INDEX_HTML)
+        self.assertIn('manualSyncBtn").addEventListener("click", runManualSync)', INDEX_HTML)
+        self.assertIn('button.textContent = "同步中..."', INDEX_HTML)
+        self.assertIn("button.disabled = true", INDEX_HTML)
+        self.assertIn('api("/api/auto-import/run", { method: "POST" })', INDEX_HTML)
+        self.assertIn('result.status === "DUPLICATE"', INDEX_HTML)
+        self.assertIn("await loadDashboard()", INDEX_HTML)
+        self.assertIn('setDashboardNotice(message, "ok")', INDEX_HTML)
+        self.assertIn('setDashboardNotice(error.message, "error")', INDEX_HTML)
+        self.assertIn("button.disabled = false", INDEX_HTML)
+
 
 if __name__ == "__main__":
     unittest.main()

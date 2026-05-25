@@ -81,6 +81,10 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn("escapeHtml(formatDateTime(r.uploaded_at))", INDEX_HTML)
         self.assertNotIn("escapeHtml(r.uploaded_at)", INDEX_HTML)
 
+    def test_header_shows_data_update_time_from_dashboard_payload(self) -> None:
+        self.assertIn("数据更新时间：${formatDateTime(data.data_updated_at)}", INDEX_HTML)
+        self.assertNotIn("刷新时间：${new Date().toLocaleString()}", INDEX_HTML)
+
     def test_header_has_manual_sync_button_that_calls_auto_import_run(self) -> None:
         self.assertIn('id="manualSyncBtn"', INDEX_HTML)
         self.assertIn(">立即同步</button>", INDEX_HTML)

@@ -546,10 +546,20 @@ class Repository:
                     """
                 )
             ]
+            latest_import = conn.execute(
+                """
+                SELECT COALESCE(parsed_at, uploaded_at) AS data_updated_at
+                  FROM import_batch
+                 WHERE status = 'SUCCESS'
+                 ORDER BY COALESCE(parsed_at, uploaded_at) DESC, uploaded_at DESC
+                 LIMIT 1
+                """
+            ).fetchone()
 
         return {
             "account_mode": "single" if int(global_account_count or 0) <= 1 else "multiple",
             "global_account_count": int(global_account_count or 0),
+            "data_updated_at": latest_import["data_updated_at"] if latest_import else None,
             "kpi": {
                 "total_tokens": kpi["total_tokens"],
                 "total_requests": kpi["total_requests"],

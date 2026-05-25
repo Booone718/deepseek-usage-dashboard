@@ -1062,7 +1062,7 @@ INDEX_HTML = r"""<!doctype html>
       renderModelTable(data.by_model);
       renderKeyTable(data.by_key || []);
       renderTrendTable(data.trend || []);
-      $("lastRefresh").textContent = `刷新时间：${new Date().toLocaleString()}`;
+      $("lastRefresh").textContent = `数据更新时间：${formatDateTime(data.data_updated_at)}`;
     }
 
     function keepSelectValue(select, rows, valueKey, labelKey, emptyText) {

@@ -105,6 +105,81 @@ class DashboardRepositoryTest(unittest.TestCase):
         self.assertEqual(data["by_model"][0]["tokens"], 250)
         self.assertEqual(data["by_key"][0]["tokens"], 250)
 
+    def test_dashboard_exposes_latest_successful_import_time_as_data_updated_at(self) -> None:
+        self.create_batch("batch1")
+        self.repo.save_import_data(
+            "batch1",
+            amount_rows(
+                [
+                    {
+                        "user_id": "user-a",
+                        "utc_date": "2026-05-01",
+                        "model": "deepseek-chat",
+                        "api_key_name": "key-a",
+                        "api_key": "sk-a",
+                        "type": "input_cache_miss_tokens",
+                        "price": 0.000001,
+                        "amount": 100,
+                        "_source": "amount.csv",
+                    }
+                ]
+            ),
+            empty_cost_rows(),
+            [],
+        )
+        self.create_batch("batch2")
+        self.repo.save_import_data(
+            "batch2",
+            amount_rows(
+                [
+                    {
+                        "user_id": "user-a",
+                        "utc_date": "2026-05-02",
+                        "model": "deepseek-chat",
+                        "api_key_name": "key-a",
+                        "api_key": "sk-a",
+                        "type": "input_cache_miss_tokens",
+                        "price": 0.000001,
+                        "amount": 120,
+                        "_source": "amount.csv",
+                    }
+                ]
+            ),
+            empty_cost_rows(),
+            [],
+        )
+        with self.repo.connect() as conn:
+            conn.execute(
+                "UPDATE import_batch SET parsed_at = ? WHERE id = ?",
+                ("2026-05-19T21:35:00+08:00", "batch1"),
+            )
+            conn.execute(
+                "UPDATE import_batch SET parsed_at = ? WHERE id = ?",
+                ("2026-05-20T21:35:00+08:00", "batch2"),
+            )
+
+        data = self.repo.dashboard_data()
+
+        self.assertEqual(data["data_updated_at"], "2026-05-20T21:35:00+08:00")
+
+    def test_dashboard_data_update_time_falls_back_to_upload_time_when_parse_time_is_missing(self) -> None:
+        self.create_batch("batch1")
+        with self.repo.connect() as conn:
+            conn.execute(
+                """
+                UPDATE import_batch
+                   SET status = 'SUCCESS',
+                       parsed_at = NULL,
+                       uploaded_at = ?
+                 WHERE id = ?
+                """,
+                ("2026-05-15T10:00:01+08:00", "batch1"),
+            )
+
+        data = self.repo.dashboard_data()
+
+        self.assertEqual(data["data_updated_at"], "2026-05-15T10:00:01+08:00")
+
     def test_dashboard_groups_key_rank_by_key_name_and_exposes_model_breakdowns(self) -> None:
         self.create_batch("batch1")
         self.repo.save_import_data(

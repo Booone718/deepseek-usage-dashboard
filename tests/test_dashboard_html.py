@@ -49,6 +49,27 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn("renderAccountOptions(data.accounts)", INDEX_HTML)
         self.assertIn("renderKeyModelRankChart(data.by_key_model || [], data.by_key || [])", INDEX_HTML)
 
+    def test_single_account_mode_hides_account_filters_and_mapping_tab(self) -> None:
+        self.assertIn('id="accountFilterField" class="multi-account-only"', INDEX_HTML)
+        self.assertIn('id="departmentFilterField" class="multi-account-only"', INDEX_HTML)
+        self.assertIn('id="ownerFilterField" class="multi-account-only"', INDEX_HTML)
+        self.assertIn('id="accountsTab" class="multi-account-only"', INDEX_HTML)
+        self.assertIn('data-tab="accounts">账号映射</button>', INDEX_HTML)
+        self.assertIn('if (singleAccountMode && $("accounts").classList.contains("active")) {', INDEX_HTML)
+        self.assertIn('activateTab("dashboard", { load: false });', INDEX_HTML)
+
+    def test_dashboard_defaults_to_this_month_and_has_quick_date_ranges(self) -> None:
+        self.assertIn('data-range-preset="last-month">上月</button>', INDEX_HTML)
+        self.assertIn('data-range-preset="this-month">本月</button>', INDEX_HTML)
+        self.assertIn('data-range-preset="this-week">本周</button>', INDEX_HTML)
+        self.assertIn('data-range-preset="today">今天</button>', INDEX_HTML)
+        self.assertIn("function dateRangeForPreset(preset, baseDate = new Date())", INDEX_HTML)
+        self.assertIn('setDateRange("this-month", { load: false });', INDEX_HTML)
+        self.assertIn('document.querySelectorAll("[data-range-preset]")', INDEX_HTML)
+        self.assertIn('button.classList.toggle("active", button.dataset.rangePreset === activeDatePreset)', INDEX_HTML)
+        self.assertIn('setDateRange(event.currentTarget.dataset.rangePreset);', INDEX_HTML)
+        self.assertIn('setDateRange("this-month");', INDEX_HTML)
+
     def test_dashboard_formats_total_tokens_and_shows_cache_hit_rate_on_token_charts(self) -> None:
         self.assertIn("function formatTokenCount(value)", INDEX_HTML)
         self.assertIn('$("kpiTokens").textContent = formatTokenCount(data.kpi.total_tokens || 0);', INDEX_HTML)

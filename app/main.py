@@ -394,8 +394,12 @@ INDEX_HTML = r"""<!doctype html>
     .kpi .label { color: var(--muted); font-size: 12px; font-weight: 800; margin-bottom: 10px; }
     .kpi .value { color: var(--ink); font-size: 25px; font-weight: 850; line-height: 1.12; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
     .kpi .hint { color: var(--quiet); font-size: 12px; margin-top: 7px; }
-    .toolbar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; }
-    .filter-actions { justify-content: flex-end; margin-top: 12px; }
+    .toolbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+    .filter-actions { justify-content: space-between; margin-top: 12px; }
+    .quick-ranges { display: flex; gap: 6px; flex-wrap: wrap; }
+    .quick-ranges button { min-width: 54px; height: 34px; }
+    .quick-ranges button.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .query-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
     label { display: block; color: var(--muted); font-size: 12px; font-weight: 800; margin-bottom: 6px; }
     input, select, button {
       height: 38px;
@@ -623,7 +627,7 @@ INDEX_HTML = r"""<!doctype html>
       .grid, .grid.two, .toolbar, .kpi-grid, .donut-layout, .upload-box { grid-template-columns: 1fr; }
       .chart-grid { grid-template-columns: 1fr; }
       .span-8, .span-6, .span-4 { grid-column: auto; }
-      .filter-actions { justify-content: flex-start; }
+      .filter-actions, .query-actions { justify-content: flex-start; }
       #accountTable { min-width: 680px; }
       #modelTable { min-width: 620px; }
     }
@@ -652,7 +656,7 @@ INDEX_HTML = r"""<!doctype html>
     <div class="tabs">
       <button class="active" data-tab="dashboard">看板</button>
       <button data-tab="upload">上传</button>
-      <button data-tab="accounts">账号映射</button>
+      <button id="accountsTab" class="multi-account-only" data-tab="accounts">账号映射</button>
       <button data-tab="imports">导入记录</button>
     </div>
 
@@ -662,15 +666,23 @@ INDEX_HTML = r"""<!doctype html>
         <div class="toolbar">
           <div><label>开始日期</label><input type="date" id="dateFrom" /></div>
           <div><label>结束日期</label><input type="date" id="dateTo" /></div>
-          <div><label>账号</label><select id="accountFilter"><option value="">全部账号</option></select></div>
+          <div id="accountFilterField" class="multi-account-only"><label>账号</label><select id="accountFilter"><option value="">全部账号</option></select></div>
           <div><label>模型</label><select id="modelFilter"><option value="">全部模型</option></select></div>
           <div><label>API Key</label><input id="keyFilter" placeholder="名称或掩码" /></div>
-          <div><label>部门</label><select id="departmentFilter"><option value="">全部部门</option></select></div>
-          <div><label>负责人</label><select id="ownerFilter"><option value="">全部负责人</option></select></div>
+          <div id="departmentFilterField" class="multi-account-only"><label>部门</label><select id="departmentFilter"><option value="">全部部门</option></select></div>
+          <div id="ownerFilterField" class="multi-account-only"><label>负责人</label><select id="ownerFilter"><option value="">全部负责人</option></select></div>
         </div>
         <div class="row filter-actions">
-          <button class="primary" id="refreshBtn">刷新</button>
-          <button id="resetBtn">重置</button>
+          <div class="quick-ranges" role="group" aria-label="快速日期筛选">
+            <button type="button" data-range-preset="last-month">上月</button>
+            <button type="button" data-range-preset="this-month">本月</button>
+            <button type="button" data-range-preset="this-week">本周</button>
+            <button type="button" data-range-preset="today">今天</button>
+          </div>
+          <div class="query-actions">
+            <button class="primary" id="refreshBtn">刷新</button>
+            <button id="resetBtn">重置</button>
+          </div>
         </div>
       </div>
 
@@ -860,6 +872,7 @@ INDEX_HTML = r"""<!doctype html>
       trend: { key: "utc_date", direction: "asc" }
     };
     let dashboardData = null;
+    let activeDatePreset = "";
     const appBase = window.__APP_BASE__ ?? (() => {
       const path = window.location.pathname.replace(/\/$/, "");
       return path === "" || path === "/" ? "" : path;
@@ -957,6 +970,8 @@ INDEX_HTML = r"""<!doctype html>
       if (filters.date) {
         $("dateFrom").value = filters.date;
         $("dateTo").value = filters.date;
+        activeDatePreset = "";
+        updateRangePresetButtons();
         labels.push(`日期：${filters.date}`);
       }
       if (filters.user_id) {
@@ -1003,11 +1018,57 @@ INDEX_HTML = r"""<!doctype html>
       return params.toString();
     }
 
+    function dateInputValue(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function dateRangeForPreset(preset, baseDate = new Date()) {
+      const today = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+      let from = today;
+      let to = today;
+      if (preset === "last-month") {
+        from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        to = new Date(today.getFullYear(), today.getMonth(), 0);
+      } else if (preset === "this-month") {
+        from = new Date(today.getFullYear(), today.getMonth(), 1);
+      } else if (preset === "this-week") {
+        const dayOfWeek = today.getDay() || 7;
+        from = new Date(today);
+        from.setDate(today.getDate() - dayOfWeek + 1);
+      }
+      return { from: dateInputValue(from), to: dateInputValue(to) };
+    }
+
+    function updateRangePresetButtons() {
+      document.querySelectorAll("[data-range-preset]").forEach(button => {
+        button.classList.toggle("active", button.dataset.rangePreset === activeDatePreset);
+      });
+    }
+
+    function setDateRange(preset, options = {}) {
+      const range = dateRangeForPreset(preset);
+      $("dateFrom").value = range.from;
+      $("dateTo").value = range.to;
+      activeDatePreset = preset;
+      updateRangePresetButtons();
+      if (options.load === false) return;
+      loadDashboard().catch(error => setDashboardNotice(error.message, "error"));
+    }
+
     function applyAccountMode(accountMode) {
       const singleAccountMode = accountMode !== "multiple";
       document.querySelectorAll(".multi-account-only").forEach(panel => {
         panel.classList.toggle("hidden", singleAccountMode);
       });
+      if (singleAccountMode) {
+        ["accountFilter", "departmentFilter", "ownerFilter"].forEach(id => $(id).value = "");
+        if (singleAccountMode && $("accounts").classList.contains("active")) {
+          activateTab("dashboard", { load: false });
+        }
+      }
       if (singleAccountMode) disposeChart("departmentChart");
       if (singleAccountMode) disposeChart("ownerChart");
       if (singleAccountMode) disposeChart("heatmapChart");
@@ -1854,10 +1915,22 @@ INDEX_HTML = r"""<!doctype html>
     $("refreshBtn").addEventListener("click", loadDashboard);
     $("manualSyncBtn").addEventListener("click", runManualSync);
     $("uploadShortcutBtn").addEventListener("click", () => activateTab("upload"));
+    document.querySelectorAll("[data-range-preset]").forEach(button => {
+      button.addEventListener("click", (event) => {
+        setDashboardNotice("");
+        setDateRange(event.currentTarget.dataset.rangePreset);
+      });
+    });
+    ["dateFrom", "dateTo"].forEach(id => {
+      $(id).addEventListener("change", () => {
+        activeDatePreset = "";
+        updateRangePresetButtons();
+      });
+    });
     $("resetBtn").addEventListener("click", () => {
-      ["dateFrom", "dateTo", "accountFilter", "modelFilter", "keyFilter", "departmentFilter", "ownerFilter"].forEach(id => $(id).value = "");
+      ["accountFilter", "modelFilter", "keyFilter", "departmentFilter", "ownerFilter"].forEach(id => $(id).value = "");
       setDashboardNotice("");
-      loadDashboard();
+      setDateRange("this-month");
     });
 
     $("uploadForm").addEventListener("submit", async (event) => {
@@ -1904,6 +1977,7 @@ INDEX_HTML = r"""<!doctype html>
       loadImports();
     });
 
+    setDateRange("this-month", { load: false });
     loadDashboard().catch(error => console.error(error));
   </script>
 </body>

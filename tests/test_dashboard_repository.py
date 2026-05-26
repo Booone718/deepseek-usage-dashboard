@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -179,6 +180,48 @@ class DashboardRepositoryTest(unittest.TestCase):
         data = self.repo.dashboard_data()
 
         self.assertEqual(data["data_updated_at"], "2026-05-15T10:00:01+08:00")
+
+    def test_dashboard_materializes_active_usage_once_per_request(self) -> None:
+        self.create_batch("batch1")
+        self.repo.save_import_data(
+            "batch1",
+            amount_rows(
+                [
+                    {
+                        "user_id": "user-a",
+                        "utc_date": "2026-05-01",
+                        "model": "deepseek-chat",
+                        "api_key_name": "key-a",
+                        "api_key": "sk-a",
+                        "type": "input_cache_miss_tokens",
+                        "price": 0.000001,
+                        "amount": 100,
+                        "_source": "amount.csv",
+                    }
+                ]
+            ),
+            empty_cost_rows(),
+            [],
+        )
+        statements: list[str] = []
+
+        class TracingRepository(Repository):
+            @contextmanager
+            def connect(inner_self):
+                with super().connect() as conn:
+                    conn.set_trace_callback(statements.append)
+                    try:
+                        yield conn
+                    finally:
+                        conn.set_trace_callback(None)
+
+        tracing_repo = TracingRepository(self.data_dir / "deepseek_usage.db", self.data_dir)
+
+        tracing_repo.dashboard_data()
+
+        trace_sql = "\n".join(statements)
+        self.assertEqual(trace_sql.count("CREATE TEMP TABLE active_amount"), 1)
+        self.assertNotIn("WITH active_amount", trace_sql)
 
     def test_dashboard_groups_key_rank_by_key_name_and_exposes_model_breakdowns(self) -> None:
         self.create_batch("batch1")

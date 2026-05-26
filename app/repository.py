@@ -255,19 +255,16 @@ class Repository:
             "a", date_from, date_to, user_id, model, api_key_query, department, owner
         )
 
-        active_amount_cte = _active_amount_cte()
-
         with self.connect() as conn:
+            _prepare_active_amount(conn)
             global_account_count = conn.execute(
-                f"""
-                {active_amount_cte}
+                """
                 SELECT COUNT(DISTINCT NULLIF(TRIM(user_id), '')) AS account_count
                   FROM active_amount
                 """
             ).fetchone()["account_count"]
             kpi = conn.execute(
                 f"""
-                {active_amount_cte}
                 SELECT
                     COALESCE(SUM(CASE WHEN type <> 'request_count' THEN amount ELSE 0 END), 0) AS total_tokens,
                     COALESCE(SUM(CASE WHEN type = 'request_count' THEN amount ELSE 0 END), 0) AS total_requests,
@@ -288,7 +285,6 @@ class Repository:
             by_account = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         COALESCE(m.account_name, a.user_id, '未知账号') AS account_name,
                         a.user_id,
@@ -313,7 +309,6 @@ class Repository:
             by_key = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         COALESCE(NULLIF(a.api_key_name, ''), NULLIF(a.api_key, ''), '未命名 Key') AS key_name,
                         GROUP_CONCAT(DISTINCT COALESCE(m.account_name, a.user_id, '未知账号')) AS account_name,
@@ -337,7 +332,6 @@ class Repository:
             by_key_model = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         COALESCE(NULLIF(a.api_key_name, ''), NULLIF(a.api_key, ''), '未命名 Key') AS key_name,
                         a.model,
@@ -362,7 +356,6 @@ class Repository:
             by_model = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         a.model,
                         COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
@@ -389,7 +382,6 @@ class Repository:
             by_department = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         COALESCE(NULLIF(TRIM(m.department), ''), '未维护部门') AS department,
                         COUNT(DISTINCT a.user_id) AS account_count,
@@ -409,7 +401,6 @@ class Repository:
             by_owner = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         COALESCE(NULLIF(TRIM(m.owner), ''), '未维护负责人') AS owner,
                         COUNT(DISTINCT a.user_id) AS account_count,
@@ -429,7 +420,6 @@ class Repository:
             token_mix = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         a.model,
                         a.type,
@@ -445,7 +435,6 @@ class Repository:
             model_account = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         COALESCE(m.account_name, a.user_id, '未知账号') AS account_name,
                         a.user_id,
@@ -466,7 +455,6 @@ class Repository:
             trend = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         a.utc_date,
                         COALESCE(SUM(CASE WHEN a.type = 'request_count' THEN a.amount ELSE 0 END), 0) AS requests,
@@ -487,7 +475,6 @@ class Repository:
             trend_by_model = _rows(
                 conn.execute(
                     f"""
-                    {active_amount_cte}
                     SELECT
                         a.utc_date,
                         a.model,
@@ -518,8 +505,7 @@ class Repository:
             models = [
                 row["model"]
                 for row in conn.execute(
-                    f"""
-                    {active_amount_cte}
+                    """
                     SELECT DISTINCT model
                       FROM active_amount
                      ORDER BY model
@@ -786,33 +772,37 @@ def _build_filters(
     return " AND ".join(conditions), params
 
 
-def _active_amount_cte() -> str:
-    return """
-                WITH active_amount AS (
-                    SELECT *
-                      FROM (
-                            SELECT a.*,
-                                   ROW_NUMBER() OVER (
-                                       PARTITION BY
-                                           COALESCE(a.user_id, ''),
-                                           a.utc_date,
-                                           a.model,
-                                           COALESCE(a.api_key_name, ''),
-                                           COALESCE(a.api_key, ''),
-                                           a.type
-                                       ORDER BY
-                                           COALESCE(b.parsed_at, b.uploaded_at) DESC,
-                                           b.uploaded_at DESC,
-                                           b.id DESC,
-                                           a.id DESC
-                                   ) AS active_rank
-                              FROM usage_amount a
-                              JOIN import_batch b ON b.id = a.import_batch_id
-                             WHERE b.status = 'SUCCESS'
-                           )
-                     WHERE active_rank = 1
-                )
-    """
+def _prepare_active_amount(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        DROP TABLE IF EXISTS active_amount;
+        CREATE TEMP TABLE active_amount AS
+            SELECT *
+              FROM (
+                    SELECT a.*,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY
+                                   COALESCE(a.user_id, ''),
+                                   a.utc_date,
+                                   a.model,
+                                   COALESCE(a.api_key_name, ''),
+                                   COALESCE(a.api_key, ''),
+                                   a.type
+                               ORDER BY
+                                   COALESCE(b.parsed_at, b.uploaded_at) DESC,
+                                   b.uploaded_at DESC,
+                                   b.id DESC,
+                                   a.id DESC
+                           ) AS active_rank
+                      FROM usage_amount a
+                      JOIN import_batch b ON b.id = a.import_batch_id
+                     WHERE b.status = 'SUCCESS'
+                   )
+             WHERE active_rank = 1;
+        CREATE INDEX idx_active_amount_filters
+            ON active_amount(user_id, utc_date, model, api_key_name, api_key, type);
+        """
+    )
 
 
 def _rows(cursor: sqlite3.Cursor) -> list[dict[str, Any]]:

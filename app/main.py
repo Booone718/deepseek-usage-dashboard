@@ -501,7 +501,7 @@ INDEX_HTML = r"""<!doctype html>
     #modelTable th:nth-child(n+2),
     #keyTable th:nth-child(n+3),
     #trendTable th:nth-child(n+2) { text-align: right; }
-    #keyTable { min-width: 900px; }
+    #keyTable { min-width: 980px; }
     #trendTable { min-width: 820px; }
     #accountsTable { min-width: 1080px; }
     #importsTable { min-width: 980px; }
@@ -1819,11 +1819,12 @@ INDEX_HTML = r"""<!doctype html>
     function renderKeyTable(rows) {
       const prepared = (rows || []).map(r => ({
         ...r,
+        cache_hit_rate: cacheHitRatio(r.cache_hit_tokens, r.cache_miss_tokens),
         cost_per_million: r.tokens ? (r.cost || 0) / r.tokens * 1000000 : 0
       }));
       const sorted = sortRows(prepared, "key");
-      $("keyTable").innerHTML = `<thead><tr>${sortableTh("key", "key_name", "API Key")}${sortableTh("key", "account_name", "关联账号")}${sortableTh("key", "account_count", "账号数")}${sortableTh("key", "cost", "费用")}${sortableTh("key", "requests", "请求数")}${sortableTh("key", "cache_hit_tokens", "命中缓存输入")}${sortableTh("key", "cache_miss_tokens", "未命中缓存输入")}${sortableTh("key", "output_tokens", "输出 Token")}${sortableTh("key", "tokens", "总 Token")}${sortableTh("key", "cost_per_million", "每百万 Token")}</tr></thead><tbody>` +
-        sorted.map(r => `<tr><td>${escapeHtml(r.key_name)}</td><td>${escapeHtml(r.account_name)}</td><td class="num">${fmt.format(r.account_count || 0)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.cache_hit_tokens || 0)}</td><td class="num">${fmt.format(r.cache_miss_tokens || 0)}</td><td class="num">${fmt.format(r.output_tokens || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td><td class="num">${money.format(r.cost_per_million)}</td></tr>`).join("") +
+      $("keyTable").innerHTML = `<thead><tr>${sortableTh("key", "key_name", "API Key")}${sortableTh("key", "account_name", "关联账号")}${sortableTh("key", "account_count", "账号数")}${sortableTh("key", "cost", "费用")}${sortableTh("key", "requests", "请求数")}${sortableTh("key", "cache_hit_tokens", "命中缓存输入")}${sortableTh("key", "cache_miss_tokens", "未命中缓存输入")}${sortableTh("key", "cache_hit_rate", "缓存命中率")}${sortableTh("key", "output_tokens", "输出 Token")}${sortableTh("key", "tokens", "总 Token")}${sortableTh("key", "cost_per_million", "每百万 Token")}</tr></thead><tbody>` +
+        sorted.map(r => `<tr><td>${escapeHtml(r.key_name)}</td><td>${escapeHtml(r.account_name)}</td><td class="num">${fmt.format(r.account_count || 0)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.cache_hit_tokens || 0)}</td><td class="num">${fmt.format(r.cache_miss_tokens || 0)}</td><td class="num">${percentFmt.format(r.cache_hit_rate)}</td><td class="num">${fmt.format(r.output_tokens || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td><td class="num">${money.format(r.cost_per_million)}</td></tr>`).join("") +
         `</tbody>`;
     }
 

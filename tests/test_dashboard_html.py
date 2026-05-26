@@ -85,6 +85,11 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn("`缓存命中率：${cacheHitRate(total.hit, total.miss)}`", INDEX_HTML)
         self.assertIn("formatter: params => `命中率 ${cacheHitRate(params.data.source.hit, params.data.source.miss)}`", INDEX_HTML)
 
+    def test_key_summary_table_shows_cache_hit_rate_per_api_key(self) -> None:
+        self.assertIn('sortableTh("key", "cache_hit_rate", "缓存命中率")', INDEX_HTML)
+        self.assertIn("cache_hit_rate: cacheHitRatio(r.cache_hit_tokens, r.cache_miss_tokens)", INDEX_HTML)
+        self.assertIn("${percentFmt.format(r.cache_hit_rate)}", INDEX_HTML)
+
     def test_trend_chart_shows_cache_hit_rate_series(self) -> None:
         self.assertIn("function cacheHitRatio(hitTokens, missTokens)", INDEX_HTML)
         self.assertIn('name: "缓存命中率"', INDEX_HTML)

@@ -656,7 +656,7 @@ INDEX_HTML = r"""<!doctype html>
     <div class="tabs">
       <button class="active" data-tab="dashboard">看板</button>
       <button data-tab="upload">上传</button>
-      <button id="accountsTab" class="multi-account-only" data-tab="accounts">账号映射</button>
+      <button id="accountsTab" class="multi-account-only hidden" data-tab="accounts">账号映射</button>
       <button data-tab="imports">导入记录</button>
     </div>
 
@@ -666,11 +666,11 @@ INDEX_HTML = r"""<!doctype html>
         <div class="toolbar">
           <div><label>开始日期</label><input type="date" id="dateFrom" /></div>
           <div><label>结束日期</label><input type="date" id="dateTo" /></div>
-          <div id="accountFilterField" class="multi-account-only"><label>账号</label><select id="accountFilter"><option value="">全部账号</option></select></div>
+          <div id="accountFilterField" class="multi-account-only hidden"><label>账号</label><select id="accountFilter"><option value="">全部账号</option></select></div>
           <div><label>模型</label><select id="modelFilter"><option value="">全部模型</option></select></div>
           <div><label>API Key</label><input id="keyFilter" placeholder="名称或掩码" /></div>
-          <div id="departmentFilterField" class="multi-account-only"><label>部门</label><select id="departmentFilter"><option value="">全部部门</option></select></div>
-          <div id="ownerFilterField" class="multi-account-only"><label>负责人</label><select id="ownerFilter"><option value="">全部负责人</option></select></div>
+          <div id="departmentFilterField" class="multi-account-only hidden"><label>部门</label><select id="departmentFilter"><option value="">全部部门</option></select></div>
+          <div id="ownerFilterField" class="multi-account-only hidden"><label>负责人</label><select id="ownerFilter"><option value="">全部负责人</option></select></div>
         </div>
         <div class="row filter-actions">
           <div class="quick-ranges" role="group" aria-label="快速日期筛选">
@@ -746,7 +746,7 @@ INDEX_HTML = r"""<!doctype html>
       </div>
 
       <div class="chart-grid">
-        <div id="departmentCostPanel" class="panel chart-panel span-6 multi-account-only">
+        <div id="departmentCostPanel" class="panel chart-panel span-6 multi-account-only hidden">
           <div class="panel-head">
             <div>
               <h2>部门费用分布</h2>
@@ -755,7 +755,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div id="departmentChart"></div>
         </div>
-        <div id="ownerCostPanel" class="panel chart-panel span-6 multi-account-only">
+        <div id="ownerCostPanel" class="panel chart-panel span-6 multi-account-only hidden">
           <div class="panel-head">
             <div>
               <h2>负责人费用分布</h2>
@@ -764,7 +764,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div id="ownerChart"></div>
         </div>
-        <div id="accountHeatmapPanel" class="panel chart-panel span-8 multi-account-only">
+        <div id="accountHeatmapPanel" class="panel chart-panel span-8 multi-account-only hidden">
           <div class="panel-head">
             <div>
               <h2>账号-模型热力图</h2>
@@ -773,7 +773,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div id="heatmapChart"></div>
         </div>
-        <div id="departmentSummaryPanel" class="panel chart-panel span-4 multi-account-only">
+        <div id="departmentSummaryPanel" class="panel chart-panel span-4 multi-account-only hidden">
           <div class="panel-head">
             <div>
               <h2>部门汇总</h2>
@@ -785,11 +785,11 @@ INDEX_HTML = r"""<!doctype html>
       </div>
 
       <div class="grid two">
-        <div id="accountSummaryPanel" class="panel multi-account-only">
+        <div id="accountSummaryPanel" class="panel multi-account-only hidden">
           <h2>账号汇总</h2>
           <div class="table-wrap"><table id="accountTable"></table></div>
         </div>
-        <div id="modelSummaryPanel" class="panel multi-account-only">
+        <div id="modelSummaryPanel" class="panel multi-account-only hidden">
           <h2>模型汇总</h2>
           <div class="table-wrap"><table id="modelTable"></table></div>
         </div>

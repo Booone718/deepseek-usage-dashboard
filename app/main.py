@@ -677,6 +677,7 @@ INDEX_HTML = r"""<!doctype html>
             <button type="button" data-range-preset="last-month">上月</button>
             <button type="button" data-range-preset="this-month">本月</button>
             <button type="button" data-range-preset="this-week">本周</button>
+            <button type="button" data-range-preset="yesterday">昨天</button>
             <button type="button" data-range-preset="today">今天</button>
           </div>
           <div class="query-actions">
@@ -1038,6 +1039,10 @@ INDEX_HTML = r"""<!doctype html>
         const dayOfWeek = today.getDay() || 7;
         from = new Date(today);
         from.setDate(today.getDate() - dayOfWeek + 1);
+      } else if (preset === "yesterday") {
+        from = new Date(today);
+        from.setDate(today.getDate() - 1);
+        to = new Date(from);
       }
       return { from: dateInputValue(from), to: dateInputValue(to) };
     }

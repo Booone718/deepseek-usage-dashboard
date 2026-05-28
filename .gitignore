@@ -1,6 +1,7 @@
 # Runtime data
 /data/
 /.dashboard_work/
+/docs/superpowers/
 
 # Uploaded/exported DeepSeek files
 /usage_data_*.zip

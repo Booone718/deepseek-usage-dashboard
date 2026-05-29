@@ -443,7 +443,7 @@ INDEX_HTML = r"""<!doctype html>
     button.ghost { background: #fff; }
     button.danger { color: var(--red); background: #fff8f8; border-color: #efc7cc; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; }
-    th, td { border-bottom: 1px solid #e8eee8; padding: 11px 10px; text-align: left; vertical-align: middle; }
+    th, td { border-right: 1px solid var(--line); border-bottom: 1px solid #e8eee8; padding: 11px 12px; text-align: left; vertical-align: middle; }
     th {
       position: sticky;
       top: 0;
@@ -451,8 +451,10 @@ INDEX_HTML = r"""<!doctype html>
       color: var(--muted);
       font-weight: 850;
       font-size: 12px;
-      background: #f7faf6;
+      background: linear-gradient(180deg, #f8fbf7 0%, #eff5f0 100%);
+      box-shadow: inset 0 -1px 0 var(--line-strong);
     }
+    th:last-child, td:last-child { border-right: 0; }
     .sort-button {
       width: 100%;
       height: auto;
@@ -481,27 +483,30 @@ INDEX_HTML = r"""<!doctype html>
       color: var(--brand);
       text-align: center;
     }
-    #keyTable th:nth-child(n+3) .sort-button,
+    #keyTable th:nth-child(n+4) .sort-button,
     #trendTable th:nth-child(n+2) .sort-button { justify-content: flex-end; }
     tbody tr { transition: background 0.15s ease; }
-    tbody tr:hover { background: #f3faf6; }
+    tbody tr:nth-child(even) { background: #fbfdfb; }
+    tbody tr:hover { background: #eef8f3; }
     td { color: #2d3a35; }
     td.num { text-align: right; font-variant-numeric: tabular-nums; }
     td input { width: 100%; min-width: 150px; }
     td input[type="checkbox"] { width: 18px; min-width: 0; }
-    .table-wrap { overflow: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); }
-    .table-wrap table { min-width: 100%; }
+    .table-wrap { overflow: auto; margin-top: 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72); }
+    .fixed-height-table { height: 420px; overflow: auto; }
+    .table-wrap table { min-width: 100%; background: #fff; }
     #accountTable, #modelTable, #departmentTable { table-layout: fixed; }
     #accountTable { min-width: 100%; }
     #modelTable { min-width: 980px; }
-    #modelTable th:first-child, #modelTable td:first-child { width: 34%; }
+    #modelTable th:first-child, #modelTable td:first-child { width: 22%; overflow-wrap: anywhere; }
     #accountTable td:nth-child(7) { text-align: right; }
     #departmentTable th:nth-child(n+2),
     #accountTable th:nth-child(n+4),
     #modelTable th:nth-child(n+2),
-    #keyTable th:nth-child(n+3),
+    #keyTable th:nth-child(n+4),
     #trendTable th:nth-child(n+2) { text-align: right; }
     #keyTable { min-width: 980px; }
+    #keyTable th.row-index, #keyTable td.row-index { width: 56px; color: var(--muted); text-align: center; }
     #trendTable { min-width: 820px; }
     #accountsTable { min-width: 1080px; }
     #importsTable { min-width: 980px; }
@@ -597,6 +602,14 @@ INDEX_HTML = r"""<!doctype html>
       margin-top: 14px;
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
     }
+    .mapping-upload-box { grid-template-columns: minmax(0, 1fr) auto; }
+    .upload-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .upload-actions button { min-width: 92px; }
     .file-dropzone {
       position: relative;
       display: grid;
@@ -723,6 +736,9 @@ INDEX_HTML = r"""<!doctype html>
       .chart-grid { grid-template-columns: 1fr; }
       .span-8, .span-6, .span-4 { grid-column: auto; }
       .filter-actions, .query-actions { justify-content: flex-start; }
+      .fixed-height-table { height: 360px; }
+      .upload-actions { justify-content: flex-start; }
+      .upload-actions button { flex: 1 1 120px; }
       #accountTable { min-width: 680px; }
       #modelTable { min-width: 620px; }
     }
@@ -834,11 +850,11 @@ INDEX_HTML = r"""<!doctype html>
 
       <div class="panel">
         <h2>API Key 汇总</h2>
-        <div class="table-wrap"><table id="keyTable"></table></div>
+        <div id="keyTableWrap" class="table-wrap fixed-height-table"><table id="keyTable"></table></div>
       </div>
       <div class="panel">
         <h2>日期趋势</h2>
-        <div class="table-wrap"><table id="trendTable"></table></div>
+        <div id="trendTableWrap" class="table-wrap fixed-height-table"><table id="trendTable"></table></div>
       </div>
 
       <div class="chart-grid">
@@ -922,10 +938,19 @@ INDEX_HTML = r"""<!doctype html>
     <section id="accounts" class="section">
       <div class="panel">
         <h2>账号映射</h2>
-        <form id="accountImportForm" class="row" style="margin-top: 14px;">
-          <input type="file" id="accountsCsv" accept=".csv" />
-          <button type="submit">导入 CSV</button>
-          <button type="button" id="exportAccountsBtn">导出 CSV</button>
+        <form id="accountImportForm" class="upload-box mapping-upload-box">
+          <label class="file-dropzone" for="accountsCsv">
+            <span class="file-badge">CSV</span>
+            <span class="file-copy">
+              <strong>选择账号映射 CSV</strong>
+              <span id="accountsCsvSummary">未选择文件</span>
+            </span>
+            <input type="file" id="accountsCsv" accept=".csv" required aria-describedby="accountsCsvSummary" />
+          </label>
+          <div class="upload-actions">
+            <button type="submit">导入 CSV</button>
+            <button type="button" id="exportAccountsBtn">导出 CSV</button>
+          </div>
         </form>
         <div class="status" id="accountStatus"></div>
         <div class="table-wrap"><table id="accountsTable"></table></div>
@@ -1939,8 +1964,8 @@ INDEX_HTML = r"""<!doctype html>
         cost_per_million: r.tokens ? (r.cost || 0) / r.tokens * 1000000 : 0
       }));
       const sorted = sortRows(prepared, "key");
-      $("keyTable").innerHTML = `<thead><tr>${sortableTh("key", "key_name", "API Key")}${sortableTh("key", "account_name", "关联账号")}${sortableTh("key", "account_count", "账号数")}${sortableTh("key", "cost", "费用")}${sortableTh("key", "requests", "请求数")}${sortableTh("key", "cache_hit_tokens", "命中缓存输入")}${sortableTh("key", "cache_miss_tokens", "未命中缓存输入")}${sortableTh("key", "cache_hit_rate", "缓存命中率")}${sortableTh("key", "output_tokens", "输出 Token")}${sortableTh("key", "tokens", "总 Token")}${sortableTh("key", "cost_per_million", "每百万 Token")}</tr></thead><tbody>` +
-        sorted.map(r => `<tr><td>${escapeHtml(r.key_name)}</td><td>${escapeHtml(r.account_name)}</td><td class="num">${fmt.format(r.account_count || 0)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.cache_hit_tokens || 0)}</td><td class="num">${fmt.format(r.cache_miss_tokens || 0)}</td><td class="num">${percentFmt.format(r.cache_hit_rate)}</td><td class="num">${fmt.format(r.output_tokens || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td><td class="num">${money.format(r.cost_per_million)}</td></tr>`).join("") +
+      $("keyTable").innerHTML = `<thead><tr><th class="row-index">序号</th>${sortableTh("key", "key_name", "API Key")}${sortableTh("key", "account_name", "关联账号")}${sortableTh("key", "cost", "费用")}${sortableTh("key", "requests", "请求数")}${sortableTh("key", "cache_hit_tokens", "命中缓存输入")}${sortableTh("key", "cache_miss_tokens", "未命中缓存输入")}${sortableTh("key", "cache_hit_rate", "缓存命中率")}${sortableTh("key", "output_tokens", "输出 Token")}${sortableTh("key", "tokens", "总 Token")}${sortableTh("key", "cost_per_million", "每百万 Token")}</tr></thead><tbody>` +
+        sorted.map((r, index) => `<tr><td class="num row-index">${index + 1}</td><td>${escapeHtml(r.key_name)}</td><td>${escapeHtml(r.account_name)}</td><td class="num">${money.format(r.cost || 0)}</td><td class="num">${fmt.format(r.requests || 0)}</td><td class="num">${fmt.format(r.cache_hit_tokens || 0)}</td><td class="num">${fmt.format(r.cache_miss_tokens || 0)}</td><td class="num">${percentFmt.format(r.cache_hit_rate)}</td><td class="num">${fmt.format(r.output_tokens || 0)}</td><td class="num">${fmt.format(r.tokens || 0)}</td><td class="num">${money.format(r.cost_per_million)}</td></tr>`).join("") +
         `</tbody>`;
     }
 
@@ -2042,6 +2067,11 @@ INDEX_HTML = r"""<!doctype html>
       $("currentUploadProgress").textContent = "0%";
     }
 
+    function updateAccountsCsvSummary() {
+      const file = $("accountsCsv").files[0];
+      $("accountsCsvSummary").textContent = file ? file.name : "未选择文件";
+    }
+
     function setUploadProgress({ currentIndex = 0, total = 0, fileName = "", completed = 0, currentFilePercent = 0 }) {
       const overallPercent = total
         ? Math.min(100, Math.round(((completed + currentFilePercent / 100) / total) * 100))
@@ -2124,6 +2154,7 @@ INDEX_HTML = r"""<!doctype html>
     });
 
     $("usageZip").addEventListener("change", updateUsageZipSummary);
+    $("accountsCsv").addEventListener("change", updateAccountsCsvSummary);
 
     $("uploadForm").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -2177,6 +2208,7 @@ INDEX_HTML = r"""<!doctype html>
       const result = await api("/api/accounts/import", { method: "POST", body: form });
       setStatus("accountStatus", `已导入 ${result.imported} 条账号映射`, "ok");
       $("accountsCsv").value = "";
+      updateAccountsCsvSummary();
       loadAccounts();
       loadDashboard();
     });

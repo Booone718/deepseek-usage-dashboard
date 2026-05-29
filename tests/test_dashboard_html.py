@@ -28,6 +28,21 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertLess(api_key_table_position, department_chart_position)
         self.assertLess(api_key_table_position, account_summary_position)
 
+    def test_key_and_trend_tables_use_fixed_height_scroll_containers(self) -> None:
+        self.assertIn('id="keyTableWrap" class="table-wrap fixed-height-table"', INDEX_HTML)
+        self.assertIn('id="trendTableWrap" class="table-wrap fixed-height-table"', INDEX_HTML)
+        self.assertIn(".fixed-height-table { height: 420px; overflow: auto; }", INDEX_HTML)
+        self.assertIn(".fixed-height-table { height: 360px; }", INDEX_HTML)
+
+    def test_tables_use_refined_grid_styling(self) -> None:
+        self.assertIn("th, td { border-right: 1px solid var(--line); border-bottom: 1px solid #e8eee8; padding: 11px 12px;", INDEX_HTML)
+        self.assertIn("th:last-child, td:last-child { border-right: 0; }", INDEX_HTML)
+        self.assertIn("tbody tr:nth-child(even) { background: #fbfdfb; }", INDEX_HTML)
+        self.assertIn("tbody tr:hover { background: #eef8f3; }", INDEX_HTML)
+        self.assertIn(".table-wrap { overflow: auto; margin-top: 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: #fff;", INDEX_HTML)
+        self.assertIn(".table-wrap table { min-width: 100%; background: #fff; }", INDEX_HTML)
+        self.assertIn("#modelTable th:first-child, #modelTable td:first-child { width: 22%; overflow-wrap: anywhere; }", INDEX_HTML)
+
     def test_single_account_mode_hides_multi_account_only_panels(self) -> None:
         self.assertIn('id="departmentCostPanel"', INDEX_HTML)
         self.assertIn('id="ownerCostPanel"', INDEX_HTML)
@@ -88,9 +103,29 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn("formatter: params => `命中率 ${cacheHitRate(params.data.source.hit, params.data.source.miss)}`", INDEX_HTML)
 
     def test_key_summary_table_shows_cache_hit_rate_per_api_key(self) -> None:
+        self.assertIn('<th class="row-index">序号</th>', INDEX_HTML)
+        self.assertIn("sorted.map((r, index) =>", INDEX_HTML)
+        self.assertIn('<td class="num row-index">${index + 1}</td>', INDEX_HTML)
+        self.assertIn("#keyTable th.row-index, #keyTable td.row-index { width: 56px; color: var(--muted); text-align: center; }", INDEX_HTML)
+        self.assertIn("#keyTable th:nth-child(n+4)", INDEX_HTML)
+        self.assertNotIn('sortableTh("key", "account_count", "账号数")', INDEX_HTML)
+        self.assertNotIn('<td class="num row-index">${index + 1}</td><td>${escapeHtml(r.key_name)}</td><td>${escapeHtml(r.account_name)}</td><td class="num">${fmt.format(r.account_count || 0)}</td>', INDEX_HTML)
+        self.assertIn('<td class="num row-index">${index + 1}</td><td>${escapeHtml(r.key_name)}</td><td>${escapeHtml(r.account_name)}</td><td class="num">${money.format(r.cost || 0)}</td>', INDEX_HTML)
         self.assertIn('sortableTh("key", "cache_hit_rate", "缓存命中率")', INDEX_HTML)
         self.assertIn("cache_hit_rate: cacheHitRatio(r.cache_hit_tokens, r.cache_miss_tokens)", INDEX_HTML)
         self.assertIn("${percentFmt.format(r.cache_hit_rate)}", INDEX_HTML)
+
+    def test_account_mapping_csv_upload_uses_file_panel(self) -> None:
+        self.assertIn('id="accountImportForm" class="upload-box mapping-upload-box"', INDEX_HTML)
+        self.assertIn('<span class="file-badge">CSV</span>', INDEX_HTML)
+        self.assertIn('<strong>选择账号映射 CSV</strong>', INDEX_HTML)
+        self.assertIn('id="accountsCsvSummary">未选择文件</span>', INDEX_HTML)
+        self.assertIn('id="accountsCsv" accept=".csv" required aria-describedby="accountsCsvSummary"', INDEX_HTML)
+        self.assertIn('class="upload-actions"', INDEX_HTML)
+        self.assertIn("function updateAccountsCsvSummary()", INDEX_HTML)
+        self.assertIn('accountsCsv").addEventListener("change", updateAccountsCsvSummary)', INDEX_HTML)
+        self.assertIn("updateAccountsCsvSummary();", INDEX_HTML)
+        self.assertNotIn('id="accountImportForm" class="row" style="margin-top: 14px;"', INDEX_HTML)
 
     def test_trend_chart_shows_cache_hit_rate_series(self) -> None:
         self.assertIn("function cacheHitRatio(hitTokens, missTokens)", INDEX_HTML)

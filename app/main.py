@@ -590,11 +590,106 @@ INDEX_HTML = r"""<!doctype html>
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 12px;
       align-items: center;
-      border: 1px dashed #93baae;
-      background: #f5fbf8;
+      border: 1px solid #d7e4dd;
+      background: linear-gradient(180deg, #fbfdfb 0%, #f3faf6 100%);
       border-radius: var(--radius);
-      padding: 18px;
+      padding: 14px;
       margin-top: 14px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+    }
+    .file-dropzone {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      min-height: 74px;
+      margin: 0;
+      padding: 14px;
+      border: 1px dashed #93baae;
+      border-radius: 7px;
+      background: #ffffff;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .file-dropzone:hover {
+      border-color: var(--brand);
+      background: #f7fcf9;
+      box-shadow: 0 10px 22px rgba(14, 107, 92, 0.08);
+    }
+    .file-dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .file-dropzone:focus-within {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(14, 107, 92, 0.16);
+    }
+    .file-badge {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 7px;
+      background: #17201d;
+      color: #f4c76b;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .file-copy {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+    .file-copy strong {
+      color: var(--ink);
+      font-size: 15px;
+    }
+    .file-copy span {
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .upload-progress {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 8px;
+      padding: 2px 2px 0;
+    }
+    .upload-progress.hidden { display: none; }
+    .progress-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .progress-head span:first-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .progress-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e3ece6;
+      box-shadow: inset 0 1px 2px rgba(23, 32, 29, 0.08);
+    }
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--brand), var(--cyan));
+      transition: width 0.18s ease;
     }
     .chart-tooltip {
       position: fixed;
@@ -801,8 +896,24 @@ INDEX_HTML = r"""<!doctype html>
       <div class="panel">
         <h2>上传 DeepSeek 导出 ZIP</h2>
         <form id="uploadForm" class="upload-box">
-          <input type="file" id="usageZip" accept=".zip" required />
+          <label class="file-dropzone" for="usageZip">
+            <span class="file-badge">ZIP</span>
+            <span class="file-copy">
+              <strong>选择导出文件</strong>
+              <span id="usageZipSummary">未选择文件</span>
+            </span>
+            <input type="file" id="usageZip" accept=".zip" multiple required aria-describedby="usageZipSummary" />
+          </label>
           <button class="primary" type="submit">上传并解析</button>
+          <div id="uploadProgressPanel" class="upload-progress hidden" aria-live="polite">
+            <div class="progress-head">
+              <span id="uploadProgressText">等待上传</span>
+              <span id="currentUploadProgress">0%</span>
+            </div>
+            <div class="progress-track">
+              <div id="uploadProgressBar" class="progress-fill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+            </div>
+          </div>
         </form>
         <div class="status" id="uploadStatus"></div>
       </div>
@@ -1918,6 +2029,79 @@ INDEX_HTML = r"""<!doctype html>
       }
     }
 
+    function updateUsageZipSummary() {
+      const files = Array.from($("usageZip").files);
+      $("usageZipSummary").textContent = files.length === 0
+        ? "未选择文件"
+        : files.length === 1
+          ? files[0].name
+          : `已选择 ${files.length} 个文件：${files.slice(0, 3).map(file => file.name).join("、")}${files.length > 3 ? "..." : ""}`;
+      $("uploadProgressPanel").classList.add("hidden");
+      $("uploadProgressBar").style.width = "0%";
+      $("uploadProgressBar").setAttribute("aria-valuenow", "0");
+      $("currentUploadProgress").textContent = "0%";
+    }
+
+    function setUploadProgress({ currentIndex = 0, total = 0, fileName = "", completed = 0, currentFilePercent = 0 }) {
+      const overallPercent = total
+        ? Math.min(100, Math.round(((completed + currentFilePercent / 100) / total) * 100))
+        : 0;
+      $("uploadProgressPanel").classList.remove("hidden");
+      $("uploadProgressBar").style.width = `${overallPercent}%`;
+      $("uploadProgressBar").setAttribute("aria-valuenow", String(overallPercent));
+      $("currentUploadProgress").textContent = `${overallPercent}%`;
+      $("uploadProgressText").textContent = completed >= total && total
+        ? `全部文件处理完成，共 ${total} 个`
+        : `正在上传 ${currentIndex}/${total}：${fileName}`;
+    }
+
+    async function uploadUsageFile(file, onProgress = () => {}) {
+      return new Promise((resolve, reject) => {
+        const form = new FormData();
+        form.append("file", file);
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", apiUrl("/api/upload"));
+        xhr.upload.onprogress = event => {
+          if (!event.lengthComputable) return;
+          const currentFilePercent = Math.round(event.loaded / event.total * 100);
+          onProgress(currentFilePercent);
+        };
+        xhr.onload = () => {
+          let payload = {};
+          try {
+            payload = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+          } catch (_error) {
+            payload = {};
+          }
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve({ file: file.name, status: payload.status || "UNKNOWN" });
+            return;
+          }
+          reject(new Error(payload.detail || xhr.statusText || `HTTP ${xhr.status}`));
+        };
+        xhr.onerror = () => reject(new Error("上传请求失败"));
+        xhr.onabort = () => reject(new Error("上传已取消"));
+        xhr.send(form);
+      });
+    }
+
+    function formatUploadSummary(results, failed) {
+      const successCount = results.filter(item => item.status === "SUCCESS").length;
+      const duplicateCount = results.filter(item => item.status === "DUPLICATE").length;
+      const otherCount = results.length - successCount - duplicateCount;
+      const parts = [
+        `已处理 ${results.length + failed.length} 个文件`,
+        `成功 ${successCount} 个`
+      ];
+      if (duplicateCount) parts.push(`重复 ${duplicateCount} 个`);
+      if (otherCount) parts.push(`其他 ${otherCount} 个`);
+      if (failed.length) {
+        parts.push(`失败 ${failed.length} 个`);
+        parts.push(`失败文件：${failed.map(item => `${item.file}：${item.error}`).join("；")}`);
+      }
+      return `${parts.join("，")}。`;
+    }
+
     $("refreshBtn").addEventListener("click", loadDashboard);
     $("manualSyncBtn").addEventListener("click", runManualSync);
     $("uploadShortcutBtn").addEventListener("click", () => activateTab("upload"));
@@ -1939,24 +2123,48 @@ INDEX_HTML = r"""<!doctype html>
       setDateRange("this-month");
     });
 
+    $("usageZip").addEventListener("change", updateUsageZipSummary);
+
     $("uploadForm").addEventListener("submit", async (event) => {
       event.preventDefault();
-      const file = $("usageZip").files[0];
-      if (!file) return;
-      const form = new FormData();
-      form.append("file", file);
-      setStatus("uploadStatus", "正在上传并解析...");
+      const files = Array.from($("usageZip").files);
+      if (!files.length) return;
+      const button = event.submitter || $("uploadForm").querySelector("button[type='submit']");
+      const originalText = button.textContent;
+      const results = [];
+      const failed = [];
+      button.disabled = true;
       try {
-        const result = await api("/api/upload", { method: "POST", body: form });
-        const message = result.status === "DUPLICATE" ? "重复文件，已跳过；已切换到看板查看现有数据。" : "上传并解析完成；已切换到看板。";
-        setStatus("uploadStatus", message, "ok");
-        $("usageZip").value = "";
-        await loadDashboard();
-        activateTab("dashboard", { load: false });
-        setDashboardNotice(message, "ok");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } catch (error) {
-        setStatus("uploadStatus", error.message, "error");
+        for (const file of files) {
+          const currentIndex = results.length + failed.length + 1;
+          button.textContent = `上传中 ${currentIndex}/${files.length}`;
+          setStatus("uploadStatus", `正在上传并解析 ${currentIndex}/${files.length}：${file.name}`);
+          setUploadProgress({ currentIndex, total: files.length, fileName: file.name, completed: currentIndex - 1, currentFilePercent: 0 });
+          try {
+            results.push(await uploadUsageFile(file, currentFilePercent => {
+              setUploadProgress({ currentIndex, total: files.length, fileName: file.name, completed: currentIndex - 1, currentFilePercent });
+            }));
+          } catch (error) {
+            failed.push({ file: file.name, error: error.message });
+          }
+          setUploadProgress({ currentIndex, total: files.length, fileName: file.name, completed: results.length + failed.length, currentFilePercent: 0 });
+        }
+        const message = formatUploadSummary(results, failed);
+        setStatus("uploadStatus", message, failed.length ? "error" : "ok");
+        if (results.length) {
+          await loadDashboard();
+          setDashboardNotice(`${message} 已刷新看板。`, failed.length ? "error" : "ok");
+          if ($("imports").classList.contains("active")) await loadImports();
+          if (!failed.length) {
+            $("usageZip").value = "";
+            updateUsageZipSummary();
+            activateTab("dashboard", { load: false });
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
+        }
+      } finally {
+        button.textContent = originalText;
+        button.disabled = false;
       }
     });
 

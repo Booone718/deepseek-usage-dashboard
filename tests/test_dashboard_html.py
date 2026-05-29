@@ -127,6 +127,25 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn('setDashboardNotice(error.message, "error")', INDEX_HTML)
         self.assertIn("button.disabled = false", INDEX_HTML)
 
+    def test_usage_upload_supports_multiple_files_and_reports_partial_failures(self) -> None:
+        self.assertIn('id="usageZip" accept=".zip" multiple required', INDEX_HTML)
+        self.assertIn('class="file-dropzone"', INDEX_HTML)
+        self.assertIn('id="usageZipSummary"', INDEX_HTML)
+        self.assertIn('id="uploadProgressPanel"', INDEX_HTML)
+        self.assertIn('id="uploadProgressBar"', INDEX_HTML)
+        self.assertIn('id="currentUploadProgress"', INDEX_HTML)
+        self.assertIn("Array.from($(\"usageZip\").files)", INDEX_HTML)
+        self.assertIn("async function uploadUsageFile(file, onProgress", INDEX_HTML)
+        self.assertIn("new XMLHttpRequest()", INDEX_HTML)
+        self.assertIn("xhr.upload.onprogress", INDEX_HTML)
+        self.assertIn("function setUploadProgress", INDEX_HTML)
+        self.assertIn("currentFilePercent", INDEX_HTML)
+        self.assertIn("for (const file of files)", INDEX_HTML)
+        self.assertIn("failed.push({ file: file.name, error: error.message })", INDEX_HTML)
+        self.assertIn("formatUploadSummary(results, failed)", INDEX_HTML)
+        self.assertIn("失败文件：", INDEX_HTML)
+        self.assertNotIn("$(\"usageZip\").files[0]", INDEX_HTML)
+
 
 if __name__ == "__main__":
     unittest.main()

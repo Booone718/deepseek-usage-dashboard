@@ -1,231 +1,231 @@
-# DeepSeek Usage Dashboard Frontend Redesign
+# DeepSeek 用量看板前端重构设计
 
-Date: 2026-05-30
+日期：2026-05-30
 
-## Goal
+## 目标
 
-Redesign the frontend presentation without removing the existing dashboard. The new default experience should focus on API Key usage analysis, because in this company setup each API Key name represents an employee. DeepSeek account is an organizational grouping and resource boundary, not the primary analysis subject.
+重构前端展示效果，但不删除现有看板。新版默认体验要围绕 API Key 用量分析展开，因为在当前公司使用方式里，每个 API Key 名称就是员工名。DeepSeek 账号是资源池和组织分组，不是主要分析对象。
 
-The implementation should support two dashboard views:
+实现后支持两个看板视图：
 
-- New analysis view: API Key/employee usage analysis, with automatic single-account or multi-account presentation.
-- Classic dashboard view: the current dashboard presentation, kept as a fallback while the new view is evaluated.
+- 新版分析视图：以 API Key/员工用量分析为主，并根据数据自动展示单账号或多账号模式。
+- 经典看板视图：保留当前这套看板展示，作为新版效果不满意时的 fallback。
 
-Users should be able to switch between the two views at any time. The selected view should persist locally.
+用户可以随时在两个视图之间切换，选择结果保存在本地，下次打开时沿用上次选择。
 
-## Product Context
+## 产品背景
 
-The company may have multiple DeepSeek accounts. Each DeepSeek account can contain up to 20 API Keys, and each API Key is assigned to one employee. Most of the time the user only has data for one account, because automatic export currently supports one DeepSeek account. The UI therefore needs to work well in single-account mode today while still being ready for multi-account data later.
+公司内部可能有多个 DeepSeek 账号。每个 DeepSeek 账号最多 20 个 API Key，每个 API Key 分配给一个员工使用。大多数情况下，用户只能拿到自己这个 DeepSeek 账号的数据，因为当前自动导出功能只支持一个账号。因此，界面必须在单账号数据下足够好用，同时也要为未来多账号数据做好扩展。
 
-API Key names are employee names. Do not add an employee/API Key mapping workflow. Existing account mapping can remain for naming DeepSeek accounts, owners, departments, or remarks when multiple account data exists.
+API Key 名称就是员工名，所以不要新增“员工/API Key 映射”流程。现有账号映射功能可以保留，用于维护 DeepSeek 账号名称、负责人、部门、备注等账号元数据。
 
-## Visual Direction
+## 色彩与视觉方向
 
-Use a light, dense, professional operations-console style:
+采用浅色、高密度、专业运营后台风格：
 
-- Background: quiet light gray-blue.
-- Surfaces: white panels with restrained borders.
-- Navigation/header: deep blue-gray or ink tone.
-- Primary accent: blue-green.
-- Cache success: green.
-- Anomaly or sharp increase: red.
-- Cost warning: amber.
+- 页面背景：安静的浅灰蓝。
+- 内容区域：白色面板，边框克制。
+- 导航和头部：深蓝灰或接近墨色。
+- 主色：蓝绿色。
+- 缓存率健康：绿色。
+- 异常、突增、风险：红色。
+- 费用提醒：琥珀色。
 
-Avoid a marketing-style landing page, decorative hero sections, large gradients, and dashboard-as-TV-wall styling. The page should feel like a practical internal analytics tool: readable tables, clear sorting, visible filters, compact charts, and fast drill-down.
+不要做营销页、装饰性 hero、大面积渐变，也不要做成电视大屏式 dashboard。这个产品应该像一个内部分析工具：表格清晰、排序明显、筛选顺手、图表紧凑、下钻快速。
 
-## View Switching
+## 视图切换
 
-Add a segmented control near the dashboard header:
+在看板头部附近增加分段切换控件：
 
-- New analysis
-- Classic dashboard
+- 新版分析
+- 经典看板
 
-Behavior:
+行为规则：
 
-- The classic dashboard is the current dashboard layout and functionality.
-- The new analysis view is added alongside it.
-- Switching views should not refetch unrelated data if the current dashboard payload is already available.
-- Persist the selected view in localStorage.
-- Support URL parameters such as `?view=classic` and `?view=analysis` for direct access.
-- Keep classic view available after implementation so the user can fall back if the new design is not satisfactory.
+- 经典看板就是当前已有的看板布局和功能。
+- 新版分析视图是新增视图，和经典视图并存。
+- 如果当前已经有 dashboard 数据，切换视图时不要做无意义的重复请求。
+- 视图选择保存到 `localStorage`。
+- 支持 URL 参数直接打开，例如 `?view=classic` 和 `?view=analysis`。
+- 新版上线后仍然保留经典看板，方便效果不好时一键切回。
 
-## Account Mode
+## 账号模式
 
-Account mode is automatic, not manually selected.
+账号模式自动判断，不让用户手动切换。
 
-Rules:
+规则：
 
-- If all imported active data contains one distinct DeepSeek account, use single-account mode.
-- If imported active data contains two or more distinct DeepSeek accounts, use multi-account mode.
-- If a user filters a multi-account dataset down to one account, the system remains in multi-account mode because the broader dataset supports account comparison.
+- 当前已导入的全部有效数据里只有 1 个 DeepSeek 账号时，进入单账号模式。
+- 当前已导入的全部有效数据里有 2 个或更多 DeepSeek 账号时，进入多账号模式。
+- 如果是多账号数据，即使用户筛选到某一个账号，系统仍然保持多账号模式，因为完整数据集仍然支持账号对比。
 
-The current backend already returns `account_mode` from `/api/dashboard`. The frontend should use that value and avoid adding a manual account-mode toggle.
+当前后端 `/api/dashboard` 已经返回 `account_mode`，前端应该直接使用这个字段，不新增手动账号模式切换。
 
-## New Analysis View
+## 新版分析视图
 
-### Primary Layout
+### 第一屏结构
 
-The first screen should prioritize API Key/employee analysis.
+第一屏优先展示 API Key/员工分析。
 
-Recommended structure:
+推荐结构：
 
-1. Header summary
-   - Data updated time
-   - Current mode badge: single account or multi account
-   - Manual sync button
-   - Upload shortcut
-   - View switcher
+1. 头部摘要
+   - 数据更新时间
+   - 当前模式标识：单账号或多账号
+   - 立即同步按钮
+   - 上传数据入口
+   - 新版/经典视图切换
 
-2. Filter bar
-   - Date range and quick presets
-   - API Key/employee search
-   - Model filter
-   - Account filter only in multi-account mode
-   - Department and owner filters only in multi-account mode and only when account metadata contains non-empty department or owner values
+2. 筛选栏
+   - 日期范围和快捷日期
+   - API Key/员工搜索
+   - 模型筛选
+   - 账号筛选：仅多账号模式显示
+   - 部门、负责人筛选：仅多账号模式显示，并且只有账号元数据中存在非空部门或负责人时才展示
 
-3. KPI strip
-   - Total tokens
-   - Total cost
-   - Requests
-   - API Key/employee count
-   - Average cache hit rate
-   - Output token share
-   - Model count
-   - Multi-account mode only: account count
+3. KPI 指标条
+   - 总 Token
+   - 总费用
+   - 请求数
+   - API Key/员工数
+   - 平均缓存命中率
+   - 输出 Token 占比
+   - 模型数
+   - 账号数：仅多账号模式显示
 
-4. API Key/employee table
-   - This is the core component of the new view.
-   - Each row represents one API Key/employee.
-   - It should appear before large chart panels.
-   - It should support sorting by usage, cost, requests, cache rate, output share, and trend.
+4. API Key/员工主表
+   - 这是新版视图的核心组件。
+   - 每一行代表一个 API Key，也就是一个员工。
+   - 位置要靠前，不能放在一堆图表后面。
+   - 支持按用量、费用、请求数、缓存率、输出占比、趋势排序。
 
-5. Selected API Key detail panel
-   - When no API Key is selected, show the top API Key by tokens or a concise empty prompt.
-   - When a row is selected, show detailed charts and breakdowns for that API Key.
+5. 选中 API Key 详情区
+   - 默认可以选中 Token 最高的 API Key，或者展示一个简洁的空状态。
+   - 点击表格行后，展示这个 API Key 的详细趋势和拆分。
 
-6. Supporting analysis panels
-   - Model distribution
-   - Token type structure
-   - Daily trend table or chart
-   - Multi-account-only account analysis panels
+6. 辅助分析区
+   - 模型分布
+   - Token 类型结构
+   - 日期趋势表或趋势图
+   - 多账号专属账号分析模块
 
-### API Key/Employee Table Columns
+### API Key/员工主表字段
 
-Columns should include:
+主表字段包括：
 
-- API Key / employee name
-- Account name, multi-account mode only or secondary in single-account mode
-- Total tokens
-- Cost
-- Requests
-- Cache hit rate
-- Output token share
-- Primary model
-- Trend indicator
-- Last active date, omitted in the first slice unless it can be derived from the current payload without a backend change
+- API Key / 员工名
+- 所属账号：多账号模式显示；单账号模式可以隐藏或弱化
+- 总 Token
+- 费用
+- 请求数
+- 缓存命中率
+- 输出 Token 占比
+- 主要模型
+- 趋势标识
+- 最后活跃日期：首期可以不做，除非能直接从现有 payload 低成本推导出来
 
-Cache hit rate is computed from input cache hit and input cache miss tokens:
+缓存命中率计算方式：
 
 `cache_hit_tokens / (cache_hit_tokens + cache_miss_tokens)`
 
-Rows with very low cache hit rate or sharp negative cache-rate movement should be visually distinguishable but not noisy.
+缓存率很低或缓存率明显下降的行需要有视觉提示，但不要做得太吵。
 
-### API Key Detail Panel
+### API Key 详情区
 
-For the selected API Key/employee, show:
+选中某个 API Key/员工后，展示：
 
-- Daily token and cost trend
-- Cache hit rate trend
-- Requests trend, if it helps diagnose usage spikes
-- Model distribution
-- Input cache hit, input cache miss, and output token structure
-- Multi-account mode only: account contribution if the same Key name appears under multiple accounts
+- 每日 Token 和费用趋势
+- 缓存命中率趋势
+- 请求数趋势：如果能帮助判断突增，就展示
+- 模型分布
+- 输入命中缓存、输入未命中缓存、输出 Token 的结构
+- 多账号模式下：如果同名 Key 出现在多个账号下，展示账号贡献拆分
 
-The detail panel should make it easy to answer:
+详情区要能回答这些问题：
 
-- How much did this employee use?
-- Did their usage increase recently?
-- Is their cache hit rate healthy?
-- Which model is driving the usage?
-- Which account does the usage belong to?
+- 这个员工用了多少？
+- 最近用量有没有增加？
+- 缓存命中率是否健康？
+- 主要消耗来自哪个模型？
+- 这部分用量属于哪个 DeepSeek 账号？
 
-## Single-Account Mode
+## 单账号模式
 
-Single-account mode should remove analysis that does not add value when there is only one DeepSeek account.
+单账号模式要去掉只有一个账号时没有意义的分析模块。
 
-Hide or de-emphasize:
+隐藏或弱化：
 
-- Account filter
-- Account summary cards
-- Account x API Key heatmap
-- Department cost distribution
-- Owner cost distribution
-- Account mapping tab as a primary dashboard tab
+- 账号筛选
+- 账号汇总卡片
+- 账号 x API Key 热力图
+- 部门费用分布
+- 负责人费用分布
+- 账号映射作为主导航入口
 
-Keep:
+保留：
 
-- API Key/employee table
-- API Key detail panel
-- Trend analysis
-- Cache rate analysis
-- Model analysis
-- Token type structure
-- Upload, manual sync, and import history
+- API Key/员工主表
+- API Key 详情区
+- 趋势分析
+- 缓存率分析
+- 模型分析
+- Token 类型结构
+- 上传、立即同步、导入历史
 
-The single-account experience should feel complete, not like a disabled multi-account dashboard.
+单账号模式应该是完整好用的产品体验，而不是一个被裁掉很多功能的多账号看板。
 
-## Multi-Account Mode
+## 多账号模式
 
-Multi-account mode should keep the API Key/employee table as the main component and add account grouping and comparison.
+多账号模式仍然以 API Key/员工主表为核心，只是在此基础上增加账号分组和账号对比。
 
-Add or reveal:
+增加或展示：
 
-- Account filter
-- Account count KPI
-- Account summary table
-- Account ranking by tokens, cost, requests, and average cache rate
-- Account x API Key heatmap
-- Account contribution inside selected API Key detail
-- Account management or mapping navigation if account names need maintenance
+- 账号筛选
+- 账号数 KPI
+- 账号汇总表
+- 账号排行：按 Token、费用、请求数、平均缓存率排序
+- 账号 x API Key 热力图
+- 选中 API Key 详情里的账号贡献拆分
+- 账号管理或账号映射入口：当账号名称需要维护时展示
 
-Account is a grouping dimension. It should explain and organize API Key usage, but it should not replace API Key/employee as the main analysis subject.
+账号是分组维度，用来解释和组织 API Key 用量，但不能取代 API Key/员工成为主分析对象。
 
-## Classic Dashboard View
+## 经典看板视图
 
-The classic view should preserve the current dashboard presentation as much as practical:
+经典看板要尽量保留当前展示效果：
 
-- Current KPI grid
-- Current trend chart
-- Current model share chart
-- Current API Key rank chart
-- Current token mix chart
-- Current tables
-- Current upload, account mapping, and import record workflows
+- 当前 KPI 网格
+- 当前趋势图
+- 当前模型占比图
+- 当前 API Key 排行图
+- 当前 Token 类型结构图
+- 当前表格
+- 当前上传、账号映射、导入记录流程
 
-Minor shared styling updates are acceptable only if they do not materially change the classic layout. The purpose of classic view is fallback, so it should remain recognizable.
+可以做少量共享样式调整，但不能明显改变经典看板布局。经典看板的作用是 fallback，所以必须保持用户能认出来这是原来的看板。
 
-## Existing Feature Treatment
+## 现有功能怎么处理
 
-Keep these capabilities:
+继续保留：
 
-- ZIP upload
-- Multiple ZIP upload progress
-- Auto import status and manual sync
-- Import history and duplicate handling
-- Cleanup for old raw ZIP files
-- Account naming/mapping for DeepSeek accounts
-- CSV import/export for account mapping, if still useful
-- ECharts interactions and click-to-filter behavior where applicable
+- ZIP 上传
+- 多 ZIP 上传进度
+- 自动导入状态和立即同步
+- 导入历史、重复导入处理、失败信息
+- 过期原始 ZIP 清理
+- DeepSeek 账号命名和账号元数据维护
+- 账号映射 CSV 导入/导出：如果仍然有用就保留
+- ECharts 交互和点击图表联动筛选
 
-Reframe these capabilities:
+重新定位：
 
-- API Key summary becomes the main homepage table in the new view.
-- Model, token mix, and trend charts become supporting explanations for selected API Key or current filters.
-- Account mapping is account metadata management, not employee mapping.
+- API Key 汇总从辅助表升级为新版首页主表。
+- 模型、Token 类型、趋势图从并列大图变成解释当前筛选或选中 API Key 的辅助图。
+- 账号映射是账号元数据管理，不是员工映射。
 
-## Data and API Notes
+## 数据和接口说明
 
-Prefer using the existing `/api/dashboard` payload for the first implementation slice. It already includes:
+首期优先使用现有 `/api/dashboard` payload，不急着新增后端接口。当前 payload 已经包含：
 
 - `account_mode`
 - `global_account_count`
@@ -241,25 +241,25 @@ Prefer using the existing `/api/dashboard` payload for the first implementation 
 - `accounts`
 - `models`
 
-If the selected API Key detail cannot be derived cleanly from the current payload, add a focused backend endpoint later, such as:
+如果实现选中 API Key 详情时发现现有 payload 不够，再新增一个聚焦接口，例如：
 
 `GET /api/dashboard/key-detail?key=<name>&date_from=...&date_to=...&user_id=...`
 
-Do not add that endpoint until the frontend need is proven during implementation.
+不要提前新增这个接口，只有当前端实现证明现有数据不够时再加。
 
-## Testing and Verification
+## 测试和验证
 
-At minimum, verify:
+至少验证：
 
-- Existing backend tests still pass.
-- Classic view still renders recognizable current dashboard content.
-- New analysis view renders with the existing dashboard payload.
-- Single-account mode hides account-only modules.
-- Multi-account mode shows account-only modules.
-- View selection persists through reload.
-- Browser verification covers desktop and mobile widths.
+- 现有后端测试仍然通过。
+- 经典看板仍然能看到原来的主要内容。
+- 新版分析视图能用现有 dashboard payload 渲染。
+- 单账号模式会隐藏账号专属模块。
+- 多账号模式会展示账号专属模块。
+- 视图选择刷新后仍然保持。
+- 用浏览器验证桌面和移动端宽度。
 
-## Implementation Decisions
+## 实现决策
 
-- The new analysis view should be the default dashboard view once implemented, because the purpose of this change is to evaluate the new API Key/employee workflow. The classic dashboard remains one click away through the view switcher.
-- Trend-change indicators should be computed in the frontend for the first slice from the existing dashboard payload. Do not add backend trend metrics unless the frontend implementation proves the current payload is insufficient.
+- 新版分析视图实现后作为默认看板视图，因为这次重构就是为了评估新的 API Key/员工分析流程。经典看板通过切换按钮一键返回。
+- 趋势变化标识首期在前端基于现有 dashboard payload 简单计算。除非实现时证明现有 payload 不够，否则不增加后端趋势指标。

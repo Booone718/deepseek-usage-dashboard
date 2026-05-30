@@ -366,6 +366,8 @@ INDEX_HTML = r"""<!doctype html>
     .filters-panel { padding: 14px; }
     .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.two.summary-bottom-grid { grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.25fr); align-items: stretch; }
+    .summary-bottom-grid > .panel { height: 100%; }
     .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
     .kpi {
       position: relative;
@@ -536,6 +538,7 @@ INDEX_HTML = r"""<!doctype html>
     .bar { height: 9px; background: linear-gradient(90deg, var(--brand), var(--cyan)); }
     .chart-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
     .chart-panel { min-height: 374px; }
+    .span-12 { grid-column: span 12; }
     .span-8 { grid-column: span 8; }
     .span-6 { grid-column: span 6; }
     .span-4 { grid-column: span 4; }
@@ -553,6 +556,7 @@ INDEX_HTML = r"""<!doctype html>
     .echart { width: 100%; height: 286px; }
     .echart.tall { height: 316px; }
     #accountRankChart.echart { height: 500px; }
+    #tokenMixChart.echart { height: 420px; }
     .chart-action { cursor: pointer; transition: opacity 0.15s ease, filter 0.15s ease, transform 0.15s ease; }
     .chart-action:hover { filter: saturate(1.16) brightness(0.96); opacity: 0.92; }
     .rank-row.chart-action { border-radius: 8px; padding: 6px; margin: -6px; }
@@ -721,7 +725,7 @@ INDEX_HTML = r"""<!doctype html>
     .chart-tooltip strong { display: block; font-size: 13px; margin-bottom: 2px; }
     @media (max-width: 1120px) {
       .toolbar, .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .span-8, .span-6, .span-4 { grid-column: span 12; }
+      .span-12, .span-8, .span-6, .span-4 { grid-column: span 12; }
     }
     @media (max-width: 760px) {
       .shell { padding: 14px; }
@@ -733,8 +737,9 @@ INDEX_HTML = r"""<!doctype html>
       .tabs { width: 100%; }
       .tabs button { min-width: 86px; }
       .grid, .grid.two, .toolbar, .kpi-grid, .donut-layout, .upload-box { grid-template-columns: 1fr; }
+      .grid.two.summary-bottom-grid { grid-template-columns: 1fr; }
       .chart-grid { grid-template-columns: 1fr; }
-      .span-8, .span-6, .span-4 { grid-column: auto; }
+      .span-12, .span-8, .span-6, .span-4 { grid-column: auto; }
       .filter-actions, .query-actions { justify-content: flex-start; }
       .fixed-height-table { height: 360px; }
       .upload-actions { justify-content: flex-start; }
@@ -810,7 +815,7 @@ INDEX_HTML = r"""<!doctype html>
       </div>
 
       <div class="chart-grid">
-        <div class="panel chart-panel span-8">
+        <div class="panel chart-panel span-12">
           <div class="panel-head">
             <div>
               <h2>费用与 Token 趋势</h2>
@@ -818,15 +823,6 @@ INDEX_HTML = r"""<!doctype html>
             </div>
           </div>
           <div id="trendChart"></div>
-        </div>
-        <div class="panel chart-panel span-4">
-          <div class="panel-head">
-            <div>
-              <h2>模型占比</h2>
-              <div class="panel-subtitle">按模型展示输入命中缓存、输入未命中缓存和输出</div>
-            </div>
-          </div>
-          <div id="modelShareChart"></div>
         </div>
         <div class="panel chart-panel span-6">
           <div class="panel-head">
@@ -876,7 +872,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div id="ownerChart"></div>
         </div>
-        <div id="accountHeatmapPanel" class="panel chart-panel span-8 multi-account-only hidden">
+        <div id="accountHeatmapPanel" class="panel chart-panel span-12 multi-account-only hidden">
           <div class="panel-head">
             <div>
               <h2>账号-模型热力图</h2>
@@ -885,21 +881,18 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div id="heatmapChart"></div>
         </div>
-        <div id="departmentSummaryPanel" class="panel chart-panel span-4 multi-account-only hidden">
-          <div class="panel-head">
-            <div>
-              <h2>部门汇总</h2>
-              <div class="panel-subtitle">费用、账号数和 Token 汇总</div>
-            </div>
-          </div>
-          <div class="table-wrap"><table id="departmentTable"></table></div>
-        </div>
       </div>
 
-      <div class="grid two">
-        <div id="accountSummaryPanel" class="panel multi-account-only hidden">
-          <h2>账号汇总</h2>
-          <div class="table-wrap"><table id="accountTable"></table></div>
+      <div id="accountSummaryPanel" class="panel multi-account-only hidden">
+        <h2>账号汇总</h2>
+        <div class="table-wrap"><table id="accountTable"></table></div>
+      </div>
+
+      <div class="grid two summary-bottom-grid">
+        <div id="departmentSummaryPanel" class="panel multi-account-only hidden">
+          <h2>部门汇总</h2>
+          <div class="panel-subtitle">费用、账号数和 Token 汇总</div>
+          <div class="table-wrap"><table id="departmentTable"></table></div>
         </div>
         <div id="modelSummaryPanel" class="panel multi-account-only hidden">
           <h2>模型汇总</h2>
@@ -1235,7 +1228,6 @@ INDEX_HTML = r"""<!doctype html>
       renderDepartmentOptions(data.departments || []);
       renderOwnerOptions(data.owners || []);
       renderTrendChart(data.trend, data.trend_by_model || []);
-      renderModelShareChart(data.by_model);
       renderKeyModelRankChart(data.by_key_model || [], data.by_key || []);
       renderTokenMixChart(data.token_mix);
       if (data.account_mode === "multiple") {

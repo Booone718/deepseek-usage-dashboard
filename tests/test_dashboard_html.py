@@ -51,9 +51,9 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn('id="accountSummaryPanel"', INDEX_HTML)
         self.assertIn('id="modelSummaryPanel"', INDEX_HTML)
         self.assertIn('class="panel chart-panel span-6 multi-account-only hidden"', INDEX_HTML)
-        self.assertIn('class="panel chart-panel span-8 multi-account-only hidden"', INDEX_HTML)
-        self.assertIn('class="panel chart-panel span-4 multi-account-only hidden"', INDEX_HTML)
+        self.assertIn('id="accountHeatmapPanel" class="panel chart-panel span-12 multi-account-only hidden"', INDEX_HTML)
         self.assertIn('class="panel multi-account-only hidden"', INDEX_HTML)
+        self.assertIn('<div class="grid two summary-bottom-grid">', INDEX_HTML)
         self.assertIn("function applyAccountMode(accountMode)", INDEX_HTML)
         self.assertIn('document.querySelectorAll(".multi-account-only")', INDEX_HTML)
         self.assertIn('panel.classList.toggle("hidden", singleAccountMode)', INDEX_HTML)
@@ -114,6 +114,39 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn('sortableTh("key", "cache_hit_rate", "缓存命中率")', INDEX_HTML)
         self.assertIn("cache_hit_rate: cacheHitRatio(r.cache_hit_tokens, r.cache_miss_tokens)", INDEX_HTML)
         self.assertIn("${percentFmt.format(r.cache_hit_rate)}", INDEX_HTML)
+
+    def test_classic_dashboard_does_not_render_key_top_bottom_ranking(self) -> None:
+        self.assertNotIn("API Key Top / Bottom 排行", INDEX_HTML)
+        self.assertNotIn('id="keyTopRank"', INDEX_HTML)
+        self.assertNotIn('id="keyBottomRank"', INDEX_HTML)
+        self.assertNotIn("renderKeyTopBottomRank(data.by_key || [])", INDEX_HTML)
+        self.assertNotIn("function renderKeyTopBottomRank(rows)", INDEX_HTML)
+        self.assertNotIn("function renderKeyRankList(", INDEX_HTML)
+
+    def test_classic_dashboard_removes_model_share_and_tallens_token_mix(self) -> None:
+        self.assertNotIn("<h2>模型占比</h2>", INDEX_HTML)
+        self.assertNotIn('<div id="modelShareChart"></div>', INDEX_HTML)
+        self.assertNotIn("renderModelShareChart(data.by_model);", INDEX_HTML)
+        self.assertIn("#tokenMixChart.echart { height: 420px; }", INDEX_HTML)
+        self.assertIn('<div class="panel chart-panel span-12">', INDEX_HTML)
+
+    def test_department_and_model_summary_tables_are_bottom_pair(self) -> None:
+        self.assertIn('<div class="grid two summary-bottom-grid">', INDEX_HTML)
+        self.assertIn(".grid.two.summary-bottom-grid { grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.25fr); align-items: stretch; }", INDEX_HTML)
+        self.assertIn(".summary-bottom-grid > .panel { height: 100%; }", INDEX_HTML)
+        account_summary_position = INDEX_HTML.index('id="accountSummaryPanel"')
+        bottom_grid_position = INDEX_HTML.index('class="grid two summary-bottom-grid"')
+        department_summary_position = INDEX_HTML.index('id="departmentSummaryPanel"')
+        model_summary_position = INDEX_HTML.index('id="modelSummaryPanel"')
+        api_key_table_position = INDEX_HTML.index("API Key 汇总")
+        self.assertLess(api_key_table_position, account_summary_position)
+        self.assertLess(account_summary_position, bottom_grid_position)
+        self.assertLess(bottom_grid_position, department_summary_position)
+        self.assertLess(department_summary_position, model_summary_position)
+
+    def test_account_heatmap_uses_full_chart_width(self) -> None:
+        self.assertIn('id="accountHeatmapPanel" class="panel chart-panel span-12 multi-account-only hidden"', INDEX_HTML)
+        self.assertNotIn('id="accountHeatmapPanel" class="panel chart-panel span-8 multi-account-only hidden"', INDEX_HTML)
 
     def test_account_mapping_csv_upload_uses_file_panel(self) -> None:
         self.assertIn('id="accountImportForm" class="upload-box mapping-upload-box"', INDEX_HTML)

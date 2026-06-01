@@ -239,6 +239,7 @@ def _run_auto_import_job() -> dict[str, Any]:
         tmp_extract_dir=settings.tmp_extract_dir,
         curl_file=settings.deepseek_export_curl_file,
         default_user_id=settings.deepseek_single_account_user_id,
+        export_timezone_name=settings.auto_import_timezone,
     )
 
 

@@ -83,6 +83,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 4. 在服务器本地配置 `AUTO_IMPORT_ENABLED=true` 和 `DEEPSEEK_SINGLE_ACCOUNT_USER_ID`。
 5. 重启服务。系统会按 `AUTO_IMPORT_DAILY_TIME` 每天执行，也可以调用 `POST /api/auto-import/run` 手动触发一次。
 
+运行时会按 `AUTO_IMPORT_TIMEZONE` 自动把 cURL 导出 URL 中的 `month` / `year` 参数改为当前月份；服务器本地的 cURL secret 只作为登录态和导出接口模板保存，不需要每月手工改月份。
+
 `secrets/` 默认被 `.gitignore` 忽略。cURL 文件中可能包含 Cookie、CSRF token 等登录态，只能保存在服务器本地，不能提交到仓库、镜像或日志。
 
 ## 数据目录

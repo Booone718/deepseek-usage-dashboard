@@ -120,6 +120,35 @@ class AutoImportTest(unittest.TestCase):
         self.assertEqual(data["global_account_count"], 1)
         self.assertEqual(data["by_account"][0]["user_id"], "deepseek-main")
 
+    def test_run_auto_import_once_refreshes_export_month_from_configured_timezone(self) -> None:
+        curl_file = self.data_dir / "secrets" / "deepseek-export.curl"
+        curl_file.parent.mkdir(parents=True)
+        curl_file.write_text(
+            "curl 'https://platform.deepseek.com/api/v0/usage/export?month=5&year=2026' "
+            "-H 'cookie: sessionid=secret-value'",
+            encoding="utf-8",
+        )
+
+        def fake_downloader(curl_command: str, target_dir: Path) -> Path:
+            self.assertIn("sessionid=secret-value", curl_command)
+            self.assertIn("month=6", curl_command)
+            self.assertIn("year=2026", curl_command)
+            self.assertNotIn("month=5", curl_command)
+            return self.create_usage_zip_without_user_id()
+
+        result = run_auto_import_once(
+            repo=self.repo,
+            data_dir=self.data_dir,
+            tmp_extract_dir=self.data_dir / "tmp" / "extract",
+            curl_file=curl_file,
+            default_user_id="deepseek-main",
+            export_timezone_name="Asia/Shanghai",
+            current_time=datetime(2026, 6, 1, 9, 0, tzinfo=ZoneInfo("Asia/Shanghai")),
+            downloader=fake_downloader,
+        )
+
+        self.assertEqual(result["status"], "SUCCESS")
+
     def test_run_auto_import_once_requires_default_user_id(self) -> None:
         curl_file = self.data_dir / "deepseek-export.curl"
         curl_file.write_text("curl 'https://platform.deepseek.com/api/usage/export'", encoding="utf-8")

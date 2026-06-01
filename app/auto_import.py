@@ -217,6 +217,8 @@ def run_auto_import_once(
     tmp_extract_dir: Path,
     curl_file: Path,
     default_user_id: str,
+    export_timezone_name: str = "Asia/Shanghai",
+    current_time: datetime | None = None,
     downloader: Callable[[str, Path], Path] = download_export_from_curl,
 ) -> dict[str, object]:
     if not default_user_id.strip():
@@ -228,7 +230,12 @@ def run_auto_import_once(
         raise ValueError("DeepSeek export curl secret is empty")
     download_dir = data_dir / "tmp" / "auto-import-downloads"
     download_dir.mkdir(parents=True, exist_ok=True)
-    archive_path = downloader(curl_command, download_dir)
+    refreshed_curl_command = refresh_curl_export_month(
+        curl_command,
+        timezone_name=export_timezone_name,
+        current_time=current_time,
+    )
+    archive_path = downloader(refreshed_curl_command, download_dir)
     return import_usage_archive(
         repo=repo,
         data_dir=data_dir,
@@ -238,6 +245,50 @@ def run_auto_import_once(
         default_user_id=default_user_id,
         batch_prefix="auto",
     )
+
+
+def refresh_curl_export_month(
+    curl_command: str,
+    *,
+    timezone_name: str,
+    current_time: datetime | None = None,
+) -> str:
+    export_request = parse_curl_command(curl_command)
+    tz = ZoneInfo(timezone_name)
+    local_now = (current_time or datetime.now(tz)).astimezone(tz)
+    refreshed_url = _with_export_month(export_request.url, year=local_now.year, month=local_now.month)
+    if refreshed_url == export_request.url:
+        return curl_command
+    return curl_command.replace(export_request.url, refreshed_url, 1)
+
+
+def _with_export_month(url: str, *, year: int, month: int) -> str:
+    parts = urlsplit(url)
+    query_pairs = parse_qsl(parts.query, keep_blank_values=True)
+    refreshed_pairs: list[tuple[str, str]] = []
+    has_month = False
+    has_year = False
+    month_value_includes_year = False
+
+    for name, value in query_pairs:
+        lower_name = name.lower()
+        if lower_name == "month":
+            has_month = True
+            month_value_includes_year = re.fullmatch(r"\d{4}-\d{1,2}", value.strip()) is not None
+            refreshed_value = f"{year}-{month:02d}" if month_value_includes_year else str(month)
+            refreshed_pairs.append((name, refreshed_value))
+        elif lower_name == "year":
+            has_year = True
+            refreshed_pairs.append((name, str(year)))
+        else:
+            refreshed_pairs.append((name, value))
+
+    if not has_month:
+        refreshed_pairs.append(("month", str(month)))
+    if not has_year and not month_value_includes_year:
+        refreshed_pairs.append(("year", str(year)))
+
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(refreshed_pairs), parts.fragment))
 
 
 def next_daily_run(now: datetime, daily_time: str, timezone_name: str) -> datetime:

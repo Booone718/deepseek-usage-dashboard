@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -136,8 +136,11 @@ def dashboard_data(
 
 
 @app.get("/api/imports", dependencies=[Depends(require_auth)])
-def list_imports() -> list[dict[str, Any]]:
-    return repo.list_imports()
+def list_imports(
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> dict[str, Any]:
+    return repo.list_imports(page=page, page_size=page_size)
 
 
 @app.get("/api/auto-import/status", dependencies=[Depends(require_auth)])
@@ -497,6 +500,7 @@ INDEX_HTML = r"""<!doctype html>
     td input[type="checkbox"] { width: 18px; min-width: 0; }
     .table-wrap { overflow: auto; margin-top: 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72); }
     .fixed-height-table { height: 420px; overflow: auto; }
+    .imports-table-wrap { min-height: 260px; }
     .table-wrap table { min-width: 100%; background: #fff; }
     #accountTable, #modelTable, #departmentTable { table-layout: fixed; }
     #accountTable { min-width: 100%; }
@@ -518,6 +522,19 @@ INDEX_HTML = r"""<!doctype html>
     .status { min-height: 24px; margin-top: 10px; color: var(--muted); }
     .status.ok { color: var(--green); }
     .status.error { color: var(--red); }
+    .pagination {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .pagination button { height: 32px; min-width: 72px; padding: 0 10px; }
+    .pagination button:disabled { cursor: not-allowed; opacity: 0.5; background: #f3f6f3; }
+    .pagination-info { min-width: 150px; text-align: center; font-variant-numeric: tabular-nums; }
     .notice {
       border: 1px solid #bad9cf;
       background: #effaf6;
@@ -958,7 +975,12 @@ INDEX_HTML = r"""<!doctype html>
           <button id="cleanupBtn">清理过期原始 ZIP</button>
         </div>
         <div class="status" id="importStatus"></div>
-        <div class="table-wrap"><table id="importsTable"></table></div>
+        <div id="importsTableWrap" class="table-wrap fixed-height-table imports-table-wrap"><table id="importsTable"></table></div>
+        <div id="importsPagination" class="pagination hidden" aria-label="导入记录分页">
+          <button id="importsPrevBtn" type="button">上一页</button>
+          <span id="importsPageInfo" class="pagination-info">第 1 / 1 页</span>
+          <button id="importsNextBtn" type="button">下一页</button>
+        </div>
       </div>
     </section>
   </div>
@@ -1004,6 +1026,9 @@ INDEX_HTML = r"""<!doctype html>
     };
     let dashboardData = null;
     let activeDatePreset = "";
+    const importPageSize = 20;
+    let importCurrentPage = 1;
+    let importTotalRows = 0;
     const appBase = window.__APP_BASE__ ?? (() => {
       const path = window.location.pathname.replace(/\/$/, "");
       return path === "" || path === "/" ? "" : path;
@@ -1999,10 +2024,9 @@ INDEX_HTML = r"""<!doctype html>
       loadDashboard();
     }
 
-    async function loadImports() {
-      const rows = await api("/api/imports");
+    function renderImportsTable(rows) {
       $("importsTable").innerHTML = `<thead><tr><th>批次</th><th>文件</th><th>状态</th><th>日期范围</th><th>行数</th><th>上传时间</th><th>错误</th><th>操作</th></tr></thead><tbody>` +
-        rows.map(r => `<tr>
+        (rows || []).map(r => `<tr>
           <td class="small">${escapeHtml(r.id)}</td>
           <td>${escapeHtml(r.original_filename)}</td>
           <td>${escapeHtml(r.status)}</td>
@@ -2011,7 +2035,31 @@ INDEX_HTML = r"""<!doctype html>
           <td class="small">${escapeHtml(formatDateTime(r.uploaded_at))}</td>
           <td class="small">${escapeHtml(r.error_message || "")}</td>
           <td><button class="danger" onclick="deleteImport('${escapeHtml(r.id)}')">撤销</button></td>
-        </tr>`).join("") + `</tbody>`;
+        </tr>`).join("") + ((rows || []).length ? "" : `<tr><td colspan="8" class="muted">暂无导入记录</td></tr>`) + `</tbody>`;
+    }
+
+    function renderImportsPagination() {
+      const totalPages = Math.max(1, Math.ceil(importTotalRows / importPageSize));
+      $("importsPagination").classList.toggle("hidden", importTotalRows <= importPageSize);
+      $("importsPageInfo").textContent = `第 ${importCurrentPage} / ${totalPages} 页 · 共 ${fmt.format(importTotalRows)} 条`;
+      $("importsPrevBtn").disabled = importCurrentPage <= 1;
+      $("importsNextBtn").disabled = importCurrentPage >= totalPages;
+    }
+
+    async function loadImports(page = importCurrentPage) {
+      importCurrentPage = Math.max(1, page);
+      const data = await api(`/api/imports?page=${importCurrentPage}&page_size=${importPageSize}`);
+      importCurrentPage = data.page || 1;
+      importTotalRows = data.total || 0;
+      renderImportsTable(data.items || []);
+      renderImportsPagination();
+    }
+
+    function changeImportsPage(delta) {
+      const totalPages = Math.max(1, Math.ceil(importTotalRows / importPageSize));
+      const nextPage = Math.min(totalPages, Math.max(1, importCurrentPage + delta));
+      if (nextPage === importCurrentPage) return;
+      loadImports(nextPage);
     }
 
     async function deleteImport(batchId) {
@@ -2037,7 +2085,7 @@ INDEX_HTML = r"""<!doctype html>
             : `同步完成，状态：${result.status || "UNKNOWN"}；已刷新看板。`;
         await loadDashboard();
         setDashboardNotice(message, "ok");
-        if ($("imports").classList.contains("active")) await loadImports();
+        if ($("imports").classList.contains("active")) await loadImports(1);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (error) {
         setDashboardNotice(error.message, "error");
@@ -2128,6 +2176,8 @@ INDEX_HTML = r"""<!doctype html>
     $("refreshBtn").addEventListener("click", loadDashboard);
     $("manualSyncBtn").addEventListener("click", runManualSync);
     $("uploadShortcutBtn").addEventListener("click", () => activateTab("upload"));
+    $("importsPrevBtn").addEventListener("click", () => changeImportsPage(-1));
+    $("importsNextBtn").addEventListener("click", () => changeImportsPage(1));
     document.querySelectorAll("[data-range-preset]").forEach(button => {
       button.addEventListener("click", (event) => {
         setDashboardNotice("");
@@ -2178,7 +2228,7 @@ INDEX_HTML = r"""<!doctype html>
         if (results.length) {
           await loadDashboard();
           setDashboardNotice(`${message} 已刷新看板。`, failed.length ? "error" : "ok");
-          if ($("imports").classList.contains("active")) await loadImports();
+          if ($("imports").classList.contains("active")) await loadImports(1);
           if (!failed.length) {
             $("usageZip").value = "";
             updateUsageZipSummary();

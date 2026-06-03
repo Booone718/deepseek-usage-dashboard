@@ -177,6 +177,19 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn("escapeHtml(formatDateTime(r.uploaded_at))", INDEX_HTML)
         self.assertNotIn("escapeHtml(r.uploaded_at)", INDEX_HTML)
 
+    def test_import_records_table_is_scroll_limited_and_paginated(self) -> None:
+        self.assertIn('id="importsTableWrap" class="table-wrap fixed-height-table imports-table-wrap"', INDEX_HTML)
+        self.assertIn('id="importsPagination" class="pagination hidden"', INDEX_HTML)
+        self.assertIn("const importPageSize = 20;", INDEX_HTML)
+        self.assertIn("let importCurrentPage = 1;", INDEX_HTML)
+        self.assertIn("let importTotalRows = 0;", INDEX_HTML)
+        self.assertIn("async function loadImports(page = importCurrentPage)", INDEX_HTML)
+        self.assertIn('const data = await api(`/api/imports?page=${importCurrentPage}&page_size=${importPageSize}`);', INDEX_HTML)
+        self.assertIn("renderImportsTable(data.items || []);", INDEX_HTML)
+        self.assertIn("function renderImportsPagination()", INDEX_HTML)
+        self.assertIn('importsPrevBtn").disabled = importCurrentPage <= 1;', INDEX_HTML)
+        self.assertIn('importsNextBtn").disabled = importCurrentPage >= totalPages;', INDEX_HTML)
+
     def test_header_shows_data_update_time_from_dashboard_payload(self) -> None:
         self.assertIn("数据更新时间：${formatDateTime(data.data_updated_at)}", INDEX_HTML)
         self.assertNotIn("刷新时间：${new Date().toLocaleString()}", INDEX_HTML)

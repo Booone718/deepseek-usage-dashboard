@@ -575,9 +575,15 @@ class Repository:
             "owners": owners,
         }
 
-    def list_imports(self) -> list[dict[str, Any]]:
+    def list_imports(self, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+        page = max(1, page)
+        page_size = max(1, min(50, page_size))
         with self.connect() as conn:
-            return _rows(
+            total = int(conn.execute("SELECT COUNT(*) AS total FROM import_batch").fetchone()["total"])
+            total_pages = max(1, (total + page_size - 1) // page_size)
+            page = min(page, total_pages)
+            offset = (page - 1) * page_size
+            items = _rows(
                 conn.execute(
                     """
                     SELECT id, original_filename, stored_path, sha256, status,
@@ -585,10 +591,12 @@ class Repository:
                            cost_row_count, error_message, uploaded_at, parsed_at
                       FROM import_batch
                      ORDER BY uploaded_at DESC
-                     LIMIT 100
-                    """
+                     LIMIT ? OFFSET ?
+                    """,
+                    (page_size, offset),
                 )
             )
+        return {"items": items, "total": total, "page": page, "page_size": page_size}
 
     def list_accounts(self) -> list[dict[str, Any]]:
         with self.connect() as conn:

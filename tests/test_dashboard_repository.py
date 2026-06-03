@@ -55,6 +55,34 @@ class DashboardRepositoryTest(unittest.TestCase):
         with patch.object(repository_module, "datetime", FakeDateTime):
             self.assertEqual(repository_module.now_iso(), "2026-05-18T20:30:01+08:00")
 
+    def test_list_imports_is_paginated_with_twenty_rows_by_default(self) -> None:
+        for index in range(25):
+            batch_id = f"batch{index:02d}"
+            self.repo.create_import_batch(
+                {
+                    "id": batch_id,
+                    "original_filename": f"{batch_id}.zip",
+                    "stored_path": f"{batch_id}.zip",
+                    "sha256": batch_id,
+                    "status": "SUCCESS",
+                    "uploaded_at": f"2026-05-15T10:{index:02d}:00+08:00",
+                }
+            )
+
+        first_page = self.repo.list_imports()
+        second_page = self.repo.list_imports(page=2)
+
+        self.assertEqual(first_page["total"], 25)
+        self.assertEqual(first_page["page"], 1)
+        self.assertEqual(first_page["page_size"], 20)
+        self.assertEqual(len(first_page["items"]), 20)
+        self.assertEqual(first_page["items"][0]["id"], "batch24")
+        self.assertEqual(first_page["items"][-1]["id"], "batch05")
+        self.assertEqual(second_page["total"], 25)
+        self.assertEqual(second_page["page"], 2)
+        self.assertEqual(len(second_page["items"]), 5)
+        self.assertEqual(second_page["items"][0]["id"], "batch04")
+
     def test_dashboard_uses_latest_import_for_repeated_logical_usage_rows(self) -> None:
         self.create_batch("batch1")
         self.repo.save_import_data(

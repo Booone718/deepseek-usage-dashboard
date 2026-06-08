@@ -43,6 +43,17 @@ class DashboardHtmlTest(unittest.TestCase):
         self.assertIn(".table-wrap table { min-width: 100%; background: #fff; }", INDEX_HTML)
         self.assertIn("#modelTable th:first-child, #modelTable td:first-child { width: 22%; overflow-wrap: anywhere; }", INDEX_HTML)
 
+    def test_professional_dashboard_visual_contracts(self) -> None:
+        self.assertIn('font-family: "Bahnschrift", "Aptos", "Segoe UI Variable", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;', INDEX_HTML)
+        self.assertIn('<main id="content" class="dashboard-main">', INDEX_HTML)
+        self.assertIn('class="kpi primary-metric"', INDEX_HTML)
+        self.assertIn(".kpi.primary-metric { grid-column: span 2;", INDEX_HTML)
+        self.assertIn(".tabs button.active::after", INDEX_HTML)
+        self.assertIn(".panel::before", INDEX_HTML)
+        self.assertIn(".dashboard-loading .kpi::after", INDEX_HTML)
+        self.assertIn('document.body.classList.add("dashboard-loading");', INDEX_HTML)
+        self.assertIn('document.body.classList.remove("dashboard-loading");', INDEX_HTML)
+
     def test_single_account_mode_hides_multi_account_only_panels(self) -> None:
         self.assertIn('id="departmentCostPanel"', INDEX_HTML)
         self.assertIn('id="ownerCostPanel"', INDEX_HTML)

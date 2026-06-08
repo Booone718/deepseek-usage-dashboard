@@ -262,55 +262,79 @@ INDEX_HTML = r"""<!doctype html>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2317201d'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial' font-size='18' font-weight='700' fill='%23f4c76b'%3EDS%3C/text%3E%3C/svg%3E" />
   <style>
     :root {
-      --bg: #f3f7f5;
-      --ink: #17201d;
+      --bg: #f2f5f2;
+      --ink: #14231f;
       --text: #22302c;
-      --muted: #697873;
-      --quiet: #8b9893;
+      --muted: #61726b;
+      --quiet: #899790;
       --panel: #ffffff;
-      --panel-soft: #f8faf7;
+      --panel-soft: #f6f9f6;
+      --panel-wash: #fbfcfa;
       --line: #dfe6df;
-      --line-strong: #cbd7d0;
-      --brand: #0e6b5c;
-      --brand-dark: #0b3d36;
-      --blue: #315f9f;
-      --cyan: #16879a;
-      --green: #168a5a;
-      --red: #b04452;
-      --amber: #b36b22;
-      --aubergine: #6c5270;
-      --slate: #4e5d67;
-      --shadow: 0 16px 34px rgba(30, 43, 38, 0.08);
-      --shadow-soft: 0 8px 22px rgba(30, 43, 38, 0.06);
+      --line-strong: #c7d5cc;
+      --brand: #0d695d;
+      --brand-dark: #0a3b35;
+      --brand-soft: #dceee8;
+      --blue: #355f91;
+      --cyan: #287d8d;
+      --green: #2f805f;
+      --red: #aa4a57;
+      --amber: #b8792c;
+      --aubergine: #735d76;
+      --slate: #52636c;
+      --shadow: 0 18px 42px rgba(28, 42, 37, 0.1);
+      --shadow-soft: 0 10px 26px rgba(28, 42, 37, 0.07);
+      --shadow-focus: 0 0 0 3px rgba(13, 105, 93, 0.18);
       --radius: 8px;
     }
     * { box-sizing: border-box; }
-    html { background: var(--bg); }
+    html { background: var(--bg); scroll-behavior: smooth; }
     body {
       margin: 0;
       min-width: 320px;
       background:
-        linear-gradient(180deg, #e6efeb 0, #f3f7f5 250px, #f3f7f5 100%),
+        radial-gradient(circle at 14% -12%, rgba(13, 105, 93, 0.18), transparent 360px),
+        radial-gradient(circle at 86% 2%, rgba(184, 121, 44, 0.13), transparent 330px),
+        linear-gradient(180deg, #e7efeb 0, #f2f5f2 300px, #f4f6f3 100%),
         var(--bg);
       color: var(--text);
-      font-family: "Aptos", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+      font-family: "Bahnschrift", "Aptos", "Segoe UI Variable", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
       font-size: 14px;
+      line-height: 1.45;
       letter-spacing: 0;
+      font-variant-numeric: tabular-nums;
     }
-    .shell { max-width: 1520px; margin: 0 auto; padding: 28px 28px 40px; }
+    .shell { max-width: 1480px; margin: 0 auto; padding: 24px 28px 44px; }
     header {
+      position: relative;
+      overflow: hidden;
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 20px;
       align-items: center;
-      margin-bottom: 14px;
-      padding: 22px 24px;
-      background: var(--ink);
+      margin-bottom: 16px;
+      padding: 24px 26px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 36%),
+        linear-gradient(135deg, #14231f 0%, #1d332d 58%, #243b32 100%);
       color: #f7fbf8;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
+      box-shadow: 0 18px 44px rgba(20, 35, 31, 0.18);
     }
+    header::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.2;
+      background-image:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+      background-size: 38px 38px;
+      mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 78%, transparent 100%);
+    }
+    header > * { position: relative; z-index: 1; }
     .brand-block { display: flex; gap: 16px; align-items: center; min-width: 0; }
     .brand-mark {
       width: 46px;
@@ -320,14 +344,15 @@ INDEX_HTML = r"""<!doctype html>
       place-items: center;
       border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 7px;
-      background: #f4c76b;
+      background: linear-gradient(135deg, #f5d078, #c99035);
       color: #17201d;
       font-weight: 900;
       font-size: 14px;
       letter-spacing: 0;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 10px 22px rgba(0, 0, 0, 0.16);
     }
-    h1 { margin: 0; color: #fff; font-size: 31px; line-height: 1.12; letter-spacing: 0; }
-    h2 { margin: 0; color: var(--ink); font-size: 16px; line-height: 1.35; }
+    h1 { margin: 0; color: #fff; font-size: 32px; line-height: 1.08; letter-spacing: 0; text-wrap: balance; }
+    h2 { margin: 0; color: var(--ink); font-size: 16px; line-height: 1.35; text-wrap: balance; }
     .eyebrow { color: #9ad8c8; font-weight: 800; font-size: 12px; margin-bottom: 5px; }
     .muted { color: var(--muted); }
     header .muted { color: #b8c9c2; }
@@ -338,11 +363,11 @@ INDEX_HTML = r"""<!doctype html>
       z-index: 10;
       display: flex;
       gap: 4px;
-      margin: 0 0 16px;
+      margin: 0 0 18px;
       padding: 5px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(255, 255, 255, 0.9);
       width: max-content;
       max-width: 100%;
       overflow: auto;
@@ -350,6 +375,7 @@ INDEX_HTML = r"""<!doctype html>
       backdrop-filter: blur(10px);
     }
     .tabs button {
+      position: relative;
       min-width: 92px;
       height: 34px;
       border-color: transparent;
@@ -357,9 +383,22 @@ INDEX_HTML = r"""<!doctype html>
       color: var(--muted);
       font-weight: 700;
     }
-    .tabs button.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .tabs button:hover { color: var(--ink); background: #f3f7f4; }
+    .tabs button.active { background: var(--ink); border-color: var(--ink); color: #fff; box-shadow: 0 8px 18px rgba(20, 35, 31, 0.16); }
+    .tabs button.active::after {
+      content: "";
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 5px;
+      height: 2px;
+      border-radius: 999px;
+      background: #d9a64a;
+    }
     .panel {
-      background: var(--panel);
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, #ffffff 0%, var(--panel-wash) 100%);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 17px;
@@ -367,12 +406,26 @@ INDEX_HTML = r"""<!doctype html>
       min-width: 0;
       box-shadow: var(--shadow-soft);
     }
-    .filters-panel { padding: 14px; }
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      background: linear-gradient(90deg, var(--brand), rgba(184, 121, 44, 0.72), transparent 82%);
+      opacity: 0.88;
+    }
+    .filters-panel {
+      padding: 15px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 250, 247, 0.96)),
+        var(--panel);
+      border-color: #d6e2da;
+    }
     .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid.two.summary-bottom-grid { grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.25fr); align-items: stretch; }
     .summary-bottom-grid > .panel { height: 100%; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
     .kpi {
       position: relative;
       min-height: 108px;
@@ -383,6 +436,7 @@ INDEX_HTML = r"""<!doctype html>
       background: linear-gradient(180deg, #ffffff 0%, #fbfcfa 100%);
       box-shadow: var(--shadow-soft);
     }
+    .kpi.primary-metric { grid-column: span 2; background: linear-gradient(135deg, #ffffff 0%, #edf7f3 100%); border-color: #bed8cf; box-shadow: 0 14px 34px rgba(13, 105, 93, 0.12); }
     .kpi::before {
       content: "";
       position: absolute;
@@ -397,14 +451,16 @@ INDEX_HTML = r"""<!doctype html>
     .kpi:nth-child(6)::before { background: var(--red); }
     .kpi:nth-child(7)::before { background: var(--slate); }
     .kpi:nth-child(8)::before { background: var(--blue); }
+    .kpi:nth-child(8) { grid-column: span 2; }
     .kpi .label { color: var(--muted); font-size: 12px; font-weight: 800; margin-bottom: 10px; }
     .kpi .value { color: var(--ink); font-size: 25px; font-weight: 850; line-height: 1.12; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+    .kpi.primary-metric .value { font-size: 34px; letter-spacing: 0; }
     .kpi .hint { color: var(--quiet); font-size: 12px; margin-top: 7px; }
     .toolbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
     .filter-actions { justify-content: space-between; margin-top: 12px; }
     .quick-ranges { display: flex; gap: 6px; flex-wrap: wrap; }
     .quick-ranges button { min-width: 54px; height: 34px; }
-    .quick-ranges button.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .quick-ranges button.active { background: var(--ink); border-color: var(--ink); color: #fff; box-shadow: 0 8px 18px rgba(20, 35, 31, 0.14); }
     .query-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
     label { display: block; color: var(--muted); font-size: 12px; font-weight: 800; margin-bottom: 6px; }
     input, select, button {
@@ -417,12 +473,12 @@ INDEX_HTML = r"""<!doctype html>
       font: inherit;
       min-width: 0;
       outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, transform 0.15s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, transform 0.2s ease, color 0.2s ease;
     }
     input:hover, select:hover { border-color: #aebfb5; }
     input:focus, select:focus, button:focus-visible {
       border-color: var(--brand);
-      box-shadow: 0 0 0 3px rgba(14, 107, 92, 0.16);
+      box-shadow: var(--shadow-focus);
     }
     input[type="file"] { padding: 7px 10px; height: auto; min-height: 38px; }
     input[type="checkbox"] {
@@ -437,15 +493,15 @@ INDEX_HTML = r"""<!doctype html>
       white-space: nowrap;
       background: #f8faf7;
     }
-    button:hover { background: #eef4ef; }
-    button:active { transform: translateY(1px); }
+    button:hover { background: #eef4ef; transform: translateY(-1px); }
+    button:active { transform: scale(0.98); }
     button.primary {
       background: var(--brand);
       border-color: var(--brand);
       color: #fff;
       box-shadow: 0 10px 20px rgba(14, 107, 92, 0.2);
     }
-    button.primary:hover { background: #0b5f52; }
+    button.primary:hover { background: #0a5d52; }
     button.ghost { background: #fff; }
     button.danger { color: var(--red); background: #fff8f8; border-color: #efc7cc; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; }
@@ -549,6 +605,7 @@ INDEX_HTML = r"""<!doctype html>
     .hidden { display: none; }
     .section { display: none; }
     .section.active { display: block; }
+    .dashboard-main { min-width: 0; }
     .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .row input { flex: 1 1 220px; }
     .small { font-size: 12px; }
@@ -611,6 +668,23 @@ INDEX_HTML = r"""<!doctype html>
       background: var(--panel-soft);
       text-align: center;
       padding: 16px;
+    }
+    .dashboard-loading .kpi::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.52), transparent);
+      animation: dashboard-shimmer 1.15s linear infinite;
+      pointer-events: none;
+    }
+    .dashboard-loading .chart-panel,
+    .dashboard-loading .table-wrap {
+      opacity: 0.74;
+      transition: opacity 0.2s ease;
+    }
+    @keyframes dashboard-shimmer {
+      to { transform: translateX(100%); }
     }
     .upload-box {
       display: grid;
@@ -743,6 +817,7 @@ INDEX_HTML = r"""<!doctype html>
     .chart-tooltip strong { display: block; font-size: 13px; margin-bottom: 2px; }
     @media (max-width: 1120px) {
       .toolbar, .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .kpi.primary-metric { grid-column: span 2; }
       .span-12, .span-8, .span-6, .span-4 { grid-column: span 12; }
     }
     @media (max-width: 760px) {
@@ -755,6 +830,8 @@ INDEX_HTML = r"""<!doctype html>
       .tabs { width: 100%; }
       .tabs button { min-width: 86px; }
       .grid, .grid.two, .toolbar, .kpi-grid, .donut-layout, .upload-box { grid-template-columns: 1fr; }
+      .kpi.primary-metric { grid-column: auto; }
+      .kpi:nth-child(8) { grid-column: auto; }
       .grid.two.summary-bottom-grid { grid-template-columns: 1fr; }
       .chart-grid { grid-template-columns: 1fr; }
       .span-12, .span-8, .span-6, .span-4 { grid-column: auto; }
@@ -787,6 +864,7 @@ INDEX_HTML = r"""<!doctype html>
       </div>
     </header>
 
+    <main id="content" class="dashboard-main">
     <div class="tabs">
       <button class="active" data-tab="dashboard">看板</button>
       <button data-tab="upload">上传</button>
@@ -822,7 +900,7 @@ INDEX_HTML = r"""<!doctype html>
       </div>
 
       <div class="kpi-grid">
-        <div class="kpi"><div class="label">总费用</div><div class="value" id="kpiCost">0</div></div>
+        <div class="kpi primary-metric"><div class="label">总费用</div><div class="value" id="kpiCost">0</div></div>
         <div class="kpi"><div class="label">请求数</div><div class="value" id="kpiRequests">0</div></div>
         <div class="kpi"><div class="label">Token</div><div class="value" id="kpiTokens">0</div></div>
         <div class="kpi"><div class="label">活跃账号</div><div class="value" id="kpiAccounts">0</div></div>
@@ -983,6 +1061,7 @@ INDEX_HTML = r"""<!doctype html>
         </div>
       </div>
     </section>
+    </main>
   </div>
   <div id="chartTooltip" class="chart-tooltip hidden"></div>
 
@@ -1008,7 +1087,7 @@ INDEX_HTML = r"""<!doctype html>
       second: "2-digit",
       hour12: false
     });
-    const palette = ["#0e6b5c", "#315f9f", "#b36b22", "#16879a", "#b04452", "#6c5270", "#168a5a", "#4e5d67"];
+    const palette = ["#0d695d", "#355f91", "#b8792c", "#287d8d", "#aa4a57", "#735d76", "#2f805f", "#52636c"];
     const typeLabels = {
       input_cache_hit_tokens: "缓存命中输入",
       input_cache_miss_tokens: "缓存未命中输入",
@@ -1016,9 +1095,9 @@ INDEX_HTML = r"""<!doctype html>
       request_count: "请求次数"
     };
     const tokenTypeSeries = [
-      { key: "input_cache_hit_tokens", name: "输入命中缓存", color: "#168a5a" },
-      { key: "input_cache_miss_tokens", name: "输入未命中缓存", color: "#315f9f" },
-      { key: "output_tokens", name: "输出", color: "#b36b22" }
+      { key: "input_cache_hit_tokens", name: "输入命中缓存", color: "#2f805f" },
+      { key: "input_cache_miss_tokens", name: "输入未命中缓存", color: "#355f91" },
+      { key: "output_tokens", name: "输出", color: "#b8792c" }
     ];
     const tableSortState = {
       key: { key: "tokens", direction: "desc" },
@@ -1235,54 +1314,59 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     async function loadDashboard() {
-      const data = await api(`/api/dashboard?${queryString()}`);
-      dashboardData = data;
-      applyAccountMode(data.account_mode);
-      const totalTokens = Number(data.kpi.total_tokens || 0);
-      const totalCost = Number(data.kpi.total_cost || 0);
-      $("kpiCost").textContent = money.format(data.kpi.total_cost || 0);
-      $("kpiRequests").textContent = fmt.format(data.kpi.total_requests || 0);
-      $("kpiTokens").textContent = formatTokenCount(data.kpi.total_tokens || 0);
-      $("kpiAccounts").textContent = fmt.format(data.kpi.account_count || 0);
-      $("kpiKeys").textContent = fmt.format(data.kpi.key_count || 0);
-      $("kpiModels").textContent = fmt.format(data.kpi.model_count || 0);
-      $("kpiOutputTokens").textContent = compact.format(data.kpi.output_tokens || 0);
-      $("kpiOutputShare").textContent = totalTokens ? `${percentFmt.format((data.kpi.output_tokens || 0) / totalTokens)} / 全部 Token` : "0% / 全部 Token";
-      $("kpiAvgCost").textContent = totalTokens ? money.format(totalCost / totalTokens * 1000000) : money.format(0);
-      renderAccountOptions(data.accounts);
-      renderModelOptions(data.models);
-      renderDepartmentOptions(data.departments || []);
-      renderOwnerOptions(data.owners || []);
-      renderTrendChart(data.trend, data.trend_by_model || []);
-      renderKeyModelRankChart(data.by_key_model || [], data.by_key || []);
-      renderTokenMixChart(data.token_mix);
-      if (data.account_mode === "multiple") {
-        const departmentMetric = sumRows(data.by_department, "cost") > 0 ? "cost" : "tokens";
-        const ownerMetric = sumRows(data.by_owner, "cost") > 0 ? "cost" : "tokens";
-        renderRankChart(
-          "departmentChart",
-          data.by_department.slice(0, 8),
-          "department",
-          departmentMetric,
-          (value) => departmentMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
-          (row) => `${fmt.format(row.account_count || 0)} 个账号`
-        );
-        renderRankChart(
-          "ownerChart",
-          data.by_owner.slice(0, 8),
-          "owner",
-          ownerMetric,
-          (value) => ownerMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
-          (row) => `${compact.format(row.tokens || 0)} Token`
-        );
-        renderHeatmapChart(data.model_account);
+      document.body.classList.add("dashboard-loading");
+      try {
+        const data = await api(`/api/dashboard?${queryString()}`);
+        dashboardData = data;
+        applyAccountMode(data.account_mode);
+        const totalTokens = Number(data.kpi.total_tokens || 0);
+        const totalCost = Number(data.kpi.total_cost || 0);
+        $("kpiCost").textContent = money.format(data.kpi.total_cost || 0);
+        $("kpiRequests").textContent = fmt.format(data.kpi.total_requests || 0);
+        $("kpiTokens").textContent = formatTokenCount(data.kpi.total_tokens || 0);
+        $("kpiAccounts").textContent = fmt.format(data.kpi.account_count || 0);
+        $("kpiKeys").textContent = fmt.format(data.kpi.key_count || 0);
+        $("kpiModels").textContent = fmt.format(data.kpi.model_count || 0);
+        $("kpiOutputTokens").textContent = compact.format(data.kpi.output_tokens || 0);
+        $("kpiOutputShare").textContent = totalTokens ? `${percentFmt.format((data.kpi.output_tokens || 0) / totalTokens)} / 全部 Token` : "0% / 全部 Token";
+        $("kpiAvgCost").textContent = totalTokens ? money.format(totalCost / totalTokens * 1000000) : money.format(0);
+        renderAccountOptions(data.accounts);
+        renderModelOptions(data.models);
+        renderDepartmentOptions(data.departments || []);
+        renderOwnerOptions(data.owners || []);
+        renderTrendChart(data.trend, data.trend_by_model || []);
+        renderKeyModelRankChart(data.by_key_model || [], data.by_key || []);
+        renderTokenMixChart(data.token_mix);
+        if (data.account_mode === "multiple") {
+          const departmentMetric = sumRows(data.by_department, "cost") > 0 ? "cost" : "tokens";
+          const ownerMetric = sumRows(data.by_owner, "cost") > 0 ? "cost" : "tokens";
+          renderRankChart(
+            "departmentChart",
+            data.by_department.slice(0, 8),
+            "department",
+            departmentMetric,
+            (value) => departmentMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
+            (row) => `${fmt.format(row.account_count || 0)} 个账号`
+          );
+          renderRankChart(
+            "ownerChart",
+            data.by_owner.slice(0, 8),
+            "owner",
+            ownerMetric,
+            (value) => ownerMetric === "cost" ? money.format(value) : `${compact.format(value)} Token`,
+            (row) => `${compact.format(row.tokens || 0)} Token`
+          );
+          renderHeatmapChart(data.model_account);
+        }
+        renderDepartmentTable(data.by_department);
+        renderAccountTable(data.by_account);
+        renderModelTable(data.by_model);
+        renderKeyTable(data.by_key || []);
+        renderTrendTable(data.trend || []);
+        $("lastRefresh").textContent = `数据更新时间：${formatDateTime(data.data_updated_at)}`;
+      } finally {
+        document.body.classList.remove("dashboard-loading");
       }
-      renderDepartmentTable(data.by_department);
-      renderAccountTable(data.by_account);
-      renderModelTable(data.by_model);
-      renderKeyTable(data.by_key || []);
-      renderTrendTable(data.trend || []);
-      $("lastRefresh").textContent = `数据更新时间：${formatDateTime(data.data_updated_at)}`;
     }
 
     function keepSelectValue(select, rows, valueKey, labelKey, emptyText) {
@@ -1431,7 +1515,7 @@ INDEX_HTML = r"""<!doctype html>
         animationDuration: 650,
         animationEasing: "cubicOut",
         textStyle: {
-          fontFamily: '"Aptos", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif',
+          fontFamily: '"Bahnschrift", "Aptos", "Segoe UI Variable", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif',
           color: "#22302c"
         },
         tooltip: {
